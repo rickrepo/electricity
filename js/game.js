@@ -1,5 +1,5 @@
 // ================================================================
-// CIRCUIT WARS - A Connectivity & Sabotage Strategy Game
+// CIRCUIT WARS - Simplified Real-Time Race
 // ================================================================
 
 (function () {
@@ -10,24 +10,20 @@
   // ============================================================
 
   const GRID_SIZE = 5;
-  const INITIAL_AP = 3;
-  const ROTATE_COST = 1;
-  const SABOTAGE_COST = 2;
-  const POWER_START = 50;
-  const POWER_MAX = 100;
-  const POWER_MIN = 0;
-  const POWER_PER_CIRCUIT = 8;
-  const TURN_TIME = 20;
-  const AI_ACTION_DELAY = 500;
+  const ROUNDS_TO_WIN = 3;
+  const SCRAMBLE_PENALTY = 3; // tiles scrambled on loser after a round
 
-  // Directions: TOP=0, RIGHT=1, BOTTOM=2, LEFT=3
+  // AI move interval in ms per difficulty
+  const AI_SPEED = { easy: 2400, medium: 1500, hard: 800 };
+
+  // Directions
   const DIR = { TOP: 0, RIGHT: 1, BOTTOM: 2, LEFT: 3 };
   const OPPOSITE = [2, 3, 0, 1];
   const D_ROW = [-1, 0, 1, 0];
   const D_COL = [0, 1, 0, -1];
 
-  // Tile types and their base connections (before rotation)
-  const TYPES = {
+  // Tile types
+  const TYPE = {
     STRAIGHT: 'straight',
     CORNER: 'corner',
     TEE: 'tee',
@@ -36,25 +32,26 @@
     EMPTY: 'empty',
   };
 
-  const BASE_CONN = {
-    straight: [DIR.TOP, DIR.BOTTOM],
-    corner: [DIR.TOP, DIR.RIGHT],
-    tee: [DIR.TOP, DIR.RIGHT, DIR.BOTTOM],
-    cross: [DIR.TOP, DIR.RIGHT, DIR.BOTTOM, DIR.LEFT],
-    dead_end: [DIR.TOP],
+  // Base connections per type (before rotation)
+  const BASE = {
+    straight: [0, 2],
+    corner: [0, 1],
+    tee: [0, 1, 2],
+    cross: [0, 1, 2, 3],
+    dead_end: [0],
     empty: [],
   };
 
-  // Weights for random tile generation (non-path cells)
-  const RANDOM_WEIGHTS = [
-    { type: TYPES.STRAIGHT, weight: 30 },
-    { type: TYPES.CORNER, weight: 30 },
-    { type: TYPES.TEE, weight: 15 },
-    { type: TYPES.CROSS, weight: 3 },
-    { type: TYPES.DEAD_END, weight: 12 },
-    { type: TYPES.EMPTY, weight: 10 },
+  // Random fill weights
+  const WEIGHTS = [
+    [TYPE.STRAIGHT, 30],
+    [TYPE.CORNER, 30],
+    [TYPE.TEE, 15],
+    [TYPE.CROSS, 3],
+    [TYPE.DEAD_END, 12],
+    [TYPE.EMPTY, 8],
   ];
-  const TOTAL_WEIGHT = RANDOM_WEIGHTS.reduce((s, w) => s + w.weight, 0);
+  const W_TOTAL = WEIGHTS.reduce((s, w) => s + w[1], 0);
 
   // ============================================================
   // TILE
@@ -67,13 +64,12 @@
       this.powered = false;
     }
 
-    getConnections() {
-      const base = BASE_CONN[this.type];
-      return base.map((d) => (d + this.rotation) % 4);
+    connections() {
+      return BASE[this.type].map((d) => (d + this.rotation) % 4);
     }
 
-    hasConnection(dir) {
-      return this.getConnections().indexOf(dir) !== -1;
+    has(dir) {
+      return this.connections().indexOf(dir) !== -1;
     }
 
     rotate() {
@@ -82,156 +78,155 @@
   }
 
   // ============================================================
-  // GRID (board with path generation + pathfinding)
+  // GRID
   // ============================================================
 
   class Grid {
     constructor() {
       this.tiles = [];
       this.poweredSet = new Set();
-      this.circuitComplete = false;
+      this.complete = false;
+      this.totalTiles = GRID_SIZE * GRID_SIZE;
+    }
+
+    // Progress: fraction of tiles powered (0 to 1)
+    progress() {
+      return this.poweredSet.size / this.totalTiles;
     }
 
     generate() {
-      // Init empty grid
       this.tiles = [];
       for (let r = 0; r < GRID_SIZE; r++) {
         this.tiles[r] = [];
         for (let c = 0; c < GRID_SIZE; c++) {
-          this.tiles[r][c] = new Tile(TYPES.EMPTY, 0);
+          this.tiles[r][c] = new Tile(TYPE.EMPTY, 0);
         }
       }
-
-      // Build a guaranteed path from top to bottom
       this._buildPath();
-
-      // Fill remaining cells with random tiles
-      this._fillRandom();
-
-      // Scramble all tile rotations
+      this._fill();
       this._scramble();
-
-      // Compute initial power state
       this.updatePowered();
     }
 
-    // Generate a random walk from row 0 to row GRID_SIZE-1
+    // Scramble N random non-trivial tiles
+    scrambleN(n) {
+      const targets = [];
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const t = this.tiles[r][c];
+          if (t.type !== TYPE.EMPTY && t.type !== TYPE.CROSS) {
+            targets.push(t);
+          }
+        }
+      }
+      // Shuffle and pick n
+      for (let i = targets.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [targets[i], targets[j]] = [targets[j], targets[i]];
+      }
+      const count = Math.min(n, targets.length);
+      for (let i = 0; i < count; i++) {
+        const rotations = 1 + Math.floor(Math.random() * 3);
+        for (let j = 0; j < rotations; j++) targets[i].rotate();
+      }
+      this.updatePowered();
+    }
+
     _buildPath() {
       let col = Math.floor(Math.random() * GRID_SIZE);
       let row = 0;
       const path = [{ r: row, c: col }];
-      const visited = new Set();
-      visited.add(row * GRID_SIZE + col);
-
-      let hStreak = 0;
+      const vis = new Set();
+      vis.add(row * GRID_SIZE + col);
+      let hRun = 0;
 
       while (row < GRID_SIZE - 1) {
         const opts = [];
-
-        // Prefer going down
-        if (!visited.has((row + 1) * GRID_SIZE + col)) {
+        if (!vis.has((row + 1) * GRID_SIZE + col))
           opts.push({ r: row + 1, c: col, w: 5 });
-        }
-        // Left
-        if (col > 0 && !visited.has(row * GRID_SIZE + col - 1) && hStreak < 2) {
+        if (col > 0 && !vis.has(row * GRID_SIZE + col - 1) && hRun < 2)
           opts.push({ r: row, c: col - 1, w: 2 });
-        }
-        // Right
-        if (col < GRID_SIZE - 1 && !visited.has(row * GRID_SIZE + col + 1) && hStreak < 2) {
+        if (col < GRID_SIZE - 1 && !vis.has(row * GRID_SIZE + col + 1) && hRun < 2)
           opts.push({ r: row, c: col + 1, w: 2 });
-        }
 
         if (opts.length === 0) {
-          // Stuck — force down
           row++;
           if (row < GRID_SIZE) {
             path.push({ r: row, c: col });
-            visited.add(row * GRID_SIZE + col);
+            vis.add(row * GRID_SIZE + col);
           }
-          hStreak = 0;
+          hRun = 0;
           continue;
         }
 
         const tw = opts.reduce((s, o) => s + o.w, 0);
-        let rand = Math.random() * tw;
-        let chosen = opts[0];
+        let rnd = Math.random() * tw;
+        let pick = opts[0];
         for (const o of opts) {
-          rand -= o.w;
-          if (rand <= 0) {
-            chosen = o;
-            break;
-          }
+          rnd -= o.w;
+          if (rnd <= 0) { pick = o; break; }
         }
 
-        const prevRow = row;
-        row = chosen.r;
-        col = chosen.c;
-        hStreak = row === prevRow ? hStreak + 1 : 0;
+        const prevR = row;
+        row = pick.r;
+        col = pick.c;
+        hRun = row === prevR ? hRun + 1 : 0;
         path.push({ r: row, c: col });
-        visited.add(row * GRID_SIZE + col);
+        vis.add(row * GRID_SIZE + col);
       }
 
-      // Place correct tiles along path
       for (let i = 0; i < path.length; i++) {
         const { r, c } = path[i];
         const conns = [];
 
         if (i === 0) {
-          conns.push(DIR.TOP); // connects to power source
+          conns.push(DIR.TOP);
         } else {
-          const prev = path[i - 1];
-          if (prev.r < r) conns.push(DIR.TOP);
-          if (prev.r > r) conns.push(DIR.BOTTOM);
-          if (prev.c < c) conns.push(DIR.LEFT);
-          if (prev.c > c) conns.push(DIR.RIGHT);
+          const p = path[i - 1];
+          if (p.r < r) conns.push(DIR.TOP);
+          if (p.r > r) conns.push(DIR.BOTTOM);
+          if (p.c < c) conns.push(DIR.LEFT);
+          if (p.c > c) conns.push(DIR.RIGHT);
         }
 
         if (i === path.length - 1) {
-          conns.push(DIR.BOTTOM); // connects to battery
+          conns.push(DIR.BOTTOM);
         } else {
-          const next = path[i + 1];
-          if (next.r < r) conns.push(DIR.TOP);
-          if (next.r > r) conns.push(DIR.BOTTOM);
-          if (next.c < c) conns.push(DIR.LEFT);
-          if (next.c > c) conns.push(DIR.RIGHT);
+          const n = path[i + 1];
+          if (n.r < r) conns.push(DIR.TOP);
+          if (n.r > r) conns.push(DIR.BOTTOM);
+          if (n.c < c) conns.push(DIR.LEFT);
+          if (n.c > c) conns.push(DIR.RIGHT);
         }
 
-        this.tiles[r][c] = this._tileForConnections(conns);
+        this.tiles[r][c] = this._matchTile(conns);
       }
     }
 
-    _tileForConnections(needed) {
-      const unique = [...new Set(needed)];
-      const typeList = [TYPES.STRAIGHT, TYPES.CORNER, TYPES.TEE, TYPES.CROSS, TYPES.DEAD_END];
-      for (const type of typeList) {
-        const base = BASE_CONN[type];
-        if (base.length !== unique.length) continue;
+    _matchTile(needed) {
+      const u = [...new Set(needed)];
+      for (const type of [TYPE.STRAIGHT, TYPE.CORNER, TYPE.TEE, TYPE.CROSS, TYPE.DEAD_END]) {
+        const b = BASE[type];
+        if (b.length !== u.length) continue;
         for (let rot = 0; rot < 4; rot++) {
-          const rotated = base.map((d) => (d + rot) % 4);
-          if (
-            unique.every((d) => rotated.indexOf(d) !== -1) &&
-            rotated.every((d) => unique.indexOf(d) !== -1)
-          ) {
+          const rotated = b.map((d) => (d + rot) % 4);
+          if (u.every((d) => rotated.includes(d)) && rotated.every((d) => u.includes(d))) {
             return new Tile(type, rot);
           }
         }
       }
-      return new Tile(TYPES.CROSS, 0);
+      return new Tile(TYPE.CROSS, 0);
     }
 
-    _fillRandom() {
+    _fill() {
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-          if (this.tiles[r][c].type !== TYPES.EMPTY) continue;
-
-          let rand = Math.random() * TOTAL_WEIGHT;
-          let type = TYPES.STRAIGHT;
-          for (const w of RANDOM_WEIGHTS) {
-            rand -= w.weight;
-            if (rand <= 0) {
-              type = w.type;
-              break;
-            }
+          if (this.tiles[r][c].type !== TYPE.EMPTY) continue;
+          let rnd = Math.random() * W_TOTAL;
+          let type = TYPE.STRAIGHT;
+          for (const [t, w] of WEIGHTS) {
+            rnd -= w;
+            if (rnd <= 0) { type = t; break; }
           }
           this.tiles[r][c] = new Tile(type, Math.floor(Math.random() * 4));
         }
@@ -241,25 +236,22 @@
     _scramble() {
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-          const tile = this.tiles[r][c];
-          if (tile.type === TYPES.EMPTY || tile.type === TYPES.CROSS) continue;
-          // Rotate 1-3 times so it's never already solved
+          const t = this.tiles[r][c];
+          if (t.type === TYPE.EMPTY || t.type === TYPE.CROSS) continue;
           const n = 1 + Math.floor(Math.random() * 3);
-          for (let i = 0; i < n; i++) tile.rotate();
+          for (let i = 0; i < n; i++) t.rotate();
         }
       }
     }
 
-    // BFS from power source (top edge) to find all powered tiles
     updatePowered() {
       this.poweredSet = new Set();
-      this.circuitComplete = false;
+      this.complete = false;
 
       const queue = [];
       for (let c = 0; c < GRID_SIZE; c++) {
-        if (this.tiles[0][c].hasConnection(DIR.TOP)) {
-          const key = c; // row 0
-          this.poweredSet.add(key);
+        if (this.tiles[0][c].has(DIR.TOP)) {
+          this.poweredSet.add(c);
           queue.push({ r: 0, c: c });
         }
       }
@@ -267,24 +259,19 @@
       while (queue.length > 0) {
         const cur = queue.shift();
         const tile = this.tiles[cur.r][cur.c];
-
-        for (const dir of tile.getConnections()) {
+        for (const dir of tile.connections()) {
           const nr = cur.r + D_ROW[dir];
           const nc = cur.c + D_COL[dir];
           if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
-
           const key = nr * GRID_SIZE + nc;
           if (this.poweredSet.has(key)) continue;
-
-          const neighbor = this.tiles[nr][nc];
-          if (neighbor.hasConnection(OPPOSITE[dir])) {
+          if (this.tiles[nr][nc].has(OPPOSITE[dir])) {
             this.poweredSet.add(key);
             queue.push({ r: nr, c: nc });
           }
         }
       }
 
-      // Update tile powered states & check circuit
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
           this.tiles[r][c].powered = this.poweredSet.has(r * GRID_SIZE + c);
@@ -294,222 +281,62 @@
       for (let c = 0; c < GRID_SIZE; c++) {
         if (
           this.poweredSet.has((GRID_SIZE - 1) * GRID_SIZE + c) &&
-          this.tiles[GRID_SIZE - 1][c].hasConnection(DIR.BOTTOM)
+          this.tiles[GRID_SIZE - 1][c].has(DIR.BOTTOM)
         ) {
-          this.circuitComplete = true;
+          this.complete = true;
           break;
         }
       }
     }
 
-    // Save/restore for AI planning
-    saveRotations() {
-      const saved = [];
-      for (let r = 0; r < GRID_SIZE; r++) {
-        saved[r] = [];
-        for (let c = 0; c < GRID_SIZE; c++) {
-          saved[r][c] = this.tiles[r][c].rotation;
-        }
-      }
-      return saved;
+    // Save/restore for AI lookahead
+    saveRots() {
+      return this.tiles.map((row) => row.map((t) => t.rotation));
     }
-
-    restoreRotations(saved) {
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
+    restoreRots(saved) {
+      for (let r = 0; r < GRID_SIZE; r++)
+        for (let c = 0; c < GRID_SIZE; c++)
           this.tiles[r][c].rotation = saved[r][c];
-        }
-      }
       this.updatePowered();
     }
   }
 
   // ============================================================
-  // AI OPPONENT
+  // AI (simple: find best single rotation each tick)
   // ============================================================
 
   class AI {
-    takeTurn(ownGrid, opponentGrid, ap) {
-      const actions = [];
-      let remaining = ap;
-
-      // Save state for planning
-      const ownSaved = ownGrid.saveRotations();
-      const oppSaved = opponentGrid.saveRotations();
-
-      const ownComplete = ownGrid.circuitComplete;
-      const oppComplete = opponentGrid.circuitComplete;
-
-      while (remaining > 0) {
-        // Strategy decisions
-        if (ownComplete && remaining >= SABOTAGE_COST) {
-          // Own circuit done — focus on breaking opponent
-          const t = this._findSabotageTarget(opponentGrid);
-          if (t) {
-            actions.push({ type: 'sabotage', row: t.row, col: t.col });
-            opponentGrid.tiles[t.row][t.col].rotate();
-            opponentGrid.updatePowered();
-            remaining -= SABOTAGE_COST;
-            continue;
-          }
-        }
-
-        if (oppComplete && remaining >= SABOTAGE_COST && Math.random() < 0.65) {
-          // Opponent has circuit — high priority sabotage
-          const t = this._findSabotageTarget(opponentGrid);
-          if (t) {
-            actions.push({ type: 'sabotage', row: t.row, col: t.col });
-            opponentGrid.tiles[t.row][t.col].rotate();
-            opponentGrid.updatePowered();
-            remaining -= SABOTAGE_COST;
-            continue;
-          }
-        }
-
-        if (remaining >= ROTATE_COST) {
-          const move = this._findBestRotation(ownGrid);
-          if (move) {
-            actions.push({ type: 'rotate', row: move.row, col: move.col });
-            ownGrid.tiles[move.row][move.col].rotate();
-            ownGrid.updatePowered();
-            remaining -= ROTATE_COST;
-            continue;
-          }
-        }
-
-        // Fallback sabotage if nothing else to do
-        if (remaining >= SABOTAGE_COST) {
-          const t = this._findSabotageTarget(opponentGrid);
-          if (t) {
-            actions.push({ type: 'sabotage', row: t.row, col: t.col });
-            opponentGrid.tiles[t.row][t.col].rotate();
-            opponentGrid.updatePowered();
-            remaining -= SABOTAGE_COST;
-            continue;
-          }
-        }
-
-        break;
-      }
-
-      // Restore grids (actions will be replayed with animation)
-      ownGrid.restoreRotations(ownSaved);
-      opponentGrid.restoreRotations(oppSaved);
-
-      return actions;
-    }
-
-    _findBestRotation(grid) {
-      const currentScore = grid.poweredSet.size;
-      let bestScore = -Infinity;
-      let bestMove = null;
+    findBestMove(grid) {
+      const curScore = grid.poweredSet.size;
+      let best = { score: -1, row: -1, col: -1 };
 
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
           const tile = grid.tiles[r][c];
-          if (tile.type === TYPES.EMPTY || tile.type === TYPES.CROSS) continue;
+          if (tile.type === TYPE.EMPTY || tile.type === TYPE.CROSS) continue;
 
-          const origRot = tile.rotation;
+          const orig = tile.rotation;
           for (let n = 1; n <= 3; n++) {
-            tile.rotation = (origRot + n) % 4;
+            tile.rotation = (orig + n) % 4;
             grid.updatePowered();
-
             let score = grid.poweredSet.size;
-            if (grid.circuitComplete) score += 50;
-
-            if (score > bestScore) {
-              bestScore = score;
-              bestMove = { row: r, col: c, rotations: n };
+            if (grid.complete) score += 50;
+            if (score > best.score) {
+              best = { score, row: r, col: c };
             }
           }
-          tile.rotation = origRot;
+          tile.rotation = orig;
         }
       }
       grid.updatePowered();
 
-      if (bestScore <= currentScore) return null;
-
-      // Return move that only does 1 rotation (the game rotates once per action)
-      // But pick the tile where 1 rotation gives the best improvement
-      let bestSingleScore = -Infinity;
-      let bestSingle = null;
-
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-          const tile = grid.tiles[r][c];
-          if (tile.type === TYPES.EMPTY || tile.type === TYPES.CROSS) continue;
-
-          const origRot = tile.rotation;
-          tile.rotation = (origRot + 1) % 4;
-          grid.updatePowered();
-
-          let score = grid.poweredSet.size;
-          if (grid.circuitComplete) score += 50;
-
-          if (score > bestSingleScore) {
-            bestSingleScore = score;
-            bestSingle = { row: r, col: c };
-          }
-
-          tile.rotation = origRot;
-        }
-      }
-      grid.updatePowered();
-
-      return bestSingleScore > currentScore ? bestSingle : bestMove ? { row: bestMove.row, col: bestMove.col } : null;
-    }
-
-    _findSabotageTarget(opponentGrid) {
-      const powered = [];
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-          const tile = opponentGrid.tiles[r][c];
-          if (tile.powered && tile.type !== TYPES.CROSS && tile.type !== TYPES.EMPTY) {
-            powered.push({ row: r, col: c });
-          }
-        }
-      }
-
-      if (powered.length === 0) {
-        // No powered tiles, pick a random non-trivial tile
-        const all = [];
-        for (let r = 0; r < GRID_SIZE; r++) {
-          for (let c = 0; c < GRID_SIZE; c++) {
-            const tile = opponentGrid.tiles[r][c];
-            if (tile.type !== TYPES.CROSS && tile.type !== TYPES.EMPTY) {
-              all.push({ row: r, col: c });
-            }
-          }
-        }
-        if (all.length === 0) return null;
-        return all[Math.floor(Math.random() * all.length)];
-      }
-
-      // Pick the powered tile whose rotation causes the most damage
-      let bestDamage = -1;
-      let bestTarget = powered[0];
-
-      for (const p of powered) {
-        const tile = opponentGrid.tiles[p.row][p.col];
-        const origRot = tile.rotation;
-        tile.rotation = (origRot + 1) % 4;
-        opponentGrid.updatePowered();
-        const newPowered = opponentGrid.poweredSet.size;
-        const damage = powered.length - newPowered;
-        if (damage > bestDamage) {
-          bestDamage = damage;
-          bestTarget = p;
-        }
-        tile.rotation = origRot;
-      }
-      opponentGrid.updatePowered();
-
-      return bestTarget;
+      // Only move if it improves things
+      return best.score > curScore ? best : null;
     }
   }
 
   // ============================================================
-  // RENDERER (Canvas)
+  // RENDERER
   // ============================================================
 
   class Renderer {
@@ -518,380 +345,196 @@
       this.ctx = canvas.getContext('2d');
       this.particles = [];
       this.shakeEnd = 0;
-      this.shakeX = 0;
-      this.shakeY = 0;
-      this.rotationAnims = []; // { grid, row, col, startTime, duration }
-      this.flashTiles = []; // { grid, row, col, startTime, color }
-
-      // Layout values (set by resize)
-      this.playerTileSize = 0;
-      this.opponentTileSize = 0;
-      this.playerBoardX = 0;
-      this.playerBoardY = 0;
-      this.opponentBoardX = 0;
-      this.opponentBoardY = 0;
-      this.logicalWidth = 0;
-      this.logicalHeight = 0;
+      this.flashTiles = []; // {row, col, start, color}
+      this.tileSize = 0;
+      this.boardX = 0;
+      this.boardY = 0;
+      this.w = 0;
+      this.h = 0;
     }
 
     resize() {
       const dpr = window.devicePixelRatio || 1;
-      const maxWidth = Math.min(window.innerWidth - 16, 420);
+      const maxW = Math.min(window.innerWidth - 16, 420);
 
-      this.playerTileSize = Math.floor(maxWidth / GRID_SIZE);
-      this.opponentTileSize = Math.floor(this.playerTileSize * 0.56);
+      this.tileSize = Math.floor(maxW / GRID_SIZE);
+      const boardW = this.tileSize * GRID_SIZE;
 
-      const playerBoardW = this.playerTileSize * GRID_SIZE;
-      const opponentBoardW = this.opponentTileSize * GRID_SIZE;
+      const sourceH = 24;
+      const batteryH = 24;
 
-      const sourceH = 22;
-      const batteryH = 18;
-      const labelH = 16;
-      const gapH = 6;
+      this.w = maxW;
+      this.h = sourceH + boardW + batteryH;
 
-      const totalH =
-        sourceH +
-        this.opponentTileSize * GRID_SIZE +
-        batteryH +
-        gapH +
-        labelH +
-        sourceH +
-        this.playerTileSize * GRID_SIZE +
-        batteryH;
-
-      this.logicalWidth = maxWidth;
-      this.logicalHeight = totalH;
-
-      this.canvas.width = maxWidth * dpr;
-      this.canvas.height = totalH * dpr;
-      this.canvas.style.width = maxWidth + 'px';
-      this.canvas.style.height = totalH + 'px';
+      this.canvas.width = this.w * dpr;
+      this.canvas.height = this.h * dpr;
+      this.canvas.style.width = this.w + 'px';
+      this.canvas.style.height = this.h + 'px';
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Layout positions
-      let y = 0;
-      this.oppSourceY = y;
-      y += sourceH;
-      this.opponentBoardX = (maxWidth - opponentBoardW) / 2;
-      this.opponentBoardY = y;
-      y += this.opponentTileSize * GRID_SIZE;
-      this.oppBatteryY = y;
-      y += batteryH + gapH;
-      this.labelY = y;
-      y += labelH;
-      this.playerSourceY = y;
-      y += sourceH;
-      this.playerBoardX = (maxWidth - playerBoardW) / 2;
-      this.playerBoardY = y;
-      y += this.playerTileSize * GRID_SIZE;
-      this.playerBatteryY = y;
+      this.boardX = (maxW - boardW) / 2;
+      this.sourceY = 0;
+      this.boardY = sourceH;
+      this.batteryY = sourceH + boardW;
     }
 
     getTileAt(x, y) {
-      // Check player board
-      const pr = Math.floor((y - this.playerBoardY) / this.playerTileSize);
-      const pc = Math.floor((x - this.playerBoardX) / this.playerTileSize);
-      if (pr >= 0 && pr < GRID_SIZE && pc >= 0 && pc < GRID_SIZE) {
-        return { board: 'player', row: pr, col: pc };
+      const r = Math.floor((y - this.boardY) / this.tileSize);
+      const c = Math.floor((x - this.boardX) / this.tileSize);
+      if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+        return { row: r, col: c };
       }
-
-      // Check opponent board
-      const or2 = Math.floor((y - this.opponentBoardY) / this.opponentTileSize);
-      const oc = Math.floor((x - this.opponentBoardX) / this.opponentTileSize);
-      if (or2 >= 0 && or2 < GRID_SIZE && oc >= 0 && oc < GRID_SIZE) {
-        return { board: 'opponent', row: or2, col: oc };
-      }
-
       return null;
     }
 
-    shake(durationMs) {
-      this.shakeEnd = performance.now() + durationMs;
+    shake(ms) {
+      this.shakeEnd = performance.now() + ms;
     }
 
-    addRotationAnim(gridName, row, col) {
-      this.rotationAnims.push({
-        grid: gridName,
-        row: row,
-        col: col,
-        startTime: performance.now(),
-        duration: 180,
-      });
+    flash(row, col, color) {
+      this.flashTiles.push({ row, col, start: performance.now(), color });
     }
 
-    addFlash(gridName, row, col, color) {
-      this.flashTiles.push({
-        grid: gridName,
-        row: row,
-        col: col,
-        startTime: performance.now(),
-        color: color,
-      });
-    }
-
-    draw(game) {
+    draw(grid) {
       const ctx = this.ctx;
       const now = performance.now();
 
-      // Shake
+      // Shake offset
+      let sx = 0, sy = 0;
       if (now < this.shakeEnd) {
-        this.shakeX = (Math.random() - 0.5) * 8;
-        this.shakeY = (Math.random() - 0.5) * 8;
-      } else {
-        this.shakeX = 0;
-        this.shakeY = 0;
+        sx = (Math.random() - 0.5) * 6;
+        sy = (Math.random() - 0.5) * 6;
       }
 
       ctx.save();
-      ctx.translate(this.shakeX, this.shakeY);
+      ctx.translate(sx, sy);
 
       // Clear
       ctx.fillStyle = '#0a0a1a';
-      ctx.fillRect(-10, -10, this.logicalWidth + 20, this.logicalHeight + 20);
+      ctx.fillRect(-10, -10, this.w + 20, this.h + 20);
 
-      // Opponent section
-      this._drawLabel(ctx, 'OPPONENT', this.oppSourceY + 8, '#ff6600', 10);
-      this._drawSourceBar(
-        ctx,
-        this.opponentBoardX,
-        this.oppSourceY,
-        this.opponentTileSize * GRID_SIZE,
-        18,
-        game.aiGrid,
-        '#ff6600'
-      );
-      this._drawBoard(
-        ctx,
-        game.aiGrid,
-        this.opponentBoardX,
-        this.opponentBoardY,
-        this.opponentTileSize,
-        '#ff6600',
-        '#ff8844',
-        game.mode === 'sabotage' && game.isPlayerTurn,
-        'ai',
-        now
-      );
-      this._drawBatteryBar(
-        ctx,
-        this.opponentBoardX,
-        this.oppBatteryY,
-        this.opponentTileSize * GRID_SIZE,
-        14,
-        game.aiGrid,
-        '#ff6600'
-      );
+      // Source indicators
+      this._drawEdgeIndicators(ctx, grid, this.boardX, this.sourceY, true);
 
-      // Player section
-      this._drawLabel(ctx, 'YOUR BOARD', this.labelY, '#00e5ff', 12);
-      this._drawSourceBar(
-        ctx,
-        this.playerBoardX,
-        this.playerSourceY,
-        this.playerTileSize * GRID_SIZE,
-        20,
-        game.playerGrid,
-        '#00e5ff'
-      );
-      this._drawBoard(
-        ctx,
-        game.playerGrid,
-        this.playerBoardX,
-        this.playerBoardY,
-        this.playerTileSize,
-        '#00e5ff',
-        '#00ffcc',
-        game.mode === 'rotate' && game.isPlayerTurn,
-        'player',
-        now
-      );
-      this._drawBatteryBar(
-        ctx,
-        this.playerBoardX,
-        this.playerBatteryY,
-        this.playerTileSize * GRID_SIZE,
-        20,
-        game.playerGrid,
-        '#00e5ff'
-      );
+      // Board background
+      const bw = this.tileSize * GRID_SIZE;
+      ctx.fillStyle = '#0c0c20';
+      ctx.fillRect(this.boardX - 1, this.boardY - 1, bw + 2, bw + 2);
+
+      // Tiles
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const tile = grid.tiles[r][c];
+          const x = this.boardX + c * this.tileSize;
+          const y = this.boardY + r * this.tileSize;
+
+          // Flash check
+          const fl = this.flashTiles.find((f) => f.row === r && f.col === c);
+          const flProg = fl ? (now - fl.start) / 350 : 2;
+
+          this._drawTile(ctx, tile, x, y, this.tileSize, flProg < 1 ? fl.color : null, flProg);
+        }
+      }
+
+      // Battery indicators
+      this._drawEdgeIndicators(ctx, grid, this.boardX, this.batteryY, false);
 
       // Particles
-      this._updateParticles(ctx, game, now);
+      this._drawParticles(ctx, grid, now);
 
-      // Clean up old anims
-      this.rotationAnims = this.rotationAnims.filter((a) => now - a.startTime < a.duration);
-      this.flashTiles = this.flashTiles.filter((f) => now - f.startTime < 400);
+      // Clean old flashes
+      this.flashTiles = this.flashTiles.filter((f) => now - f.start < 350);
 
       ctx.restore();
     }
 
-    _drawLabel(ctx, text, y, color, fontSize) {
-      ctx.fillStyle = color;
-      ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(text, this.logicalWidth / 2, y);
-    }
+    _drawEdgeIndicators(ctx, grid, bx, y, isTop) {
+      const tw = this.tileSize;
+      const dir = isTop ? DIR.TOP : DIR.BOTTOM;
+      const row = isTop ? 0 : GRID_SIZE - 1;
+      const dotY = isTop ? y + 16 : y + 4;
 
-    _drawSourceBar(ctx, bx, by, bw, bh, grid, color) {
-      // Power source indicator
-      ctx.fillStyle = grid.circuitComplete ? color : '#222';
-      ctx.font = `${Math.min(bh, 16)}px system-ui`;
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const tile = grid.tiles[row][c];
+        if (tile.has(dir)) {
+          const active = isTop ? tile.powered : (tile.powered && grid.complete);
+          ctx.fillStyle = active ? '#00e5ff' : '#2a2a4a';
+          const cx = bx + c * tw + tw / 2;
+          ctx.beginPath();
+          ctx.arc(cx, dotY, 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Small line connecting to board edge
+          if (active) {
+            ctx.strokeStyle = '#00e5ff';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(cx, dotY);
+            ctx.lineTo(cx, isTop ? y + 24 : y);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
+
+      // Label
+      ctx.fillStyle = grid.complete ? '#00e5ff' : '#333';
+      ctx.font = 'bold 10px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-
-      // Connection indicators
-      const tileW = bw / GRID_SIZE;
-      for (let c = 0; c < GRID_SIZE; c++) {
-        const tile = grid.tiles[0][c];
-        const cx = bx + c * tileW + tileW / 2;
-        if (tile.hasConnection(DIR.TOP)) {
-          ctx.fillStyle = tile.powered ? color : '#334';
-          ctx.fillRect(cx - 3, by + bh - 6, 6, 6);
-        }
-      }
+      const label = isTop ? 'POWER SOURCE' : (grid.complete ? 'CONNECTED!' : 'BATTERY');
+      ctx.fillText(label, bx + (tw * GRID_SIZE) / 2, isTop ? y + 7 : y + 14);
     }
 
-    _drawBatteryBar(ctx, bx, by, bw, bh, grid, color) {
-      const tileW = bw / GRID_SIZE;
-      for (let c = 0; c < GRID_SIZE; c++) {
-        const tile = grid.tiles[GRID_SIZE - 1][c];
-        const cx = bx + c * tileW + tileW / 2;
-        if (tile.hasConnection(DIR.BOTTOM)) {
-          ctx.fillStyle =
-            tile.powered && grid.circuitComplete ? color : '#334';
-          ctx.fillRect(cx - 3, by, 6, 6);
-        }
-      }
-
-      // Battery label
-      ctx.fillStyle = grid.circuitComplete ? color : '#444';
-      ctx.font = `${Math.min(bh - 2, 12)}px system-ui`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(
-        grid.circuitComplete ? 'CONNECTED' : 'BATTERY',
-        bx + bw / 2,
-        by + bh / 2 + 2
-      );
-    }
-
-    _drawBoard(ctx, grid, bx, by, tileSize, color, poweredColor, interactive, gridName, now) {
-      // Board background
-      ctx.fillStyle = '#0c0c20';
-      ctx.fillRect(bx - 1, by - 1, tileSize * GRID_SIZE + 2, tileSize * GRID_SIZE + 2);
-
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-          const x = bx + c * tileSize;
-          const y = by + r * tileSize;
-          const tile = grid.tiles[r][c];
-
-          // Check for rotation animation
-          const anim = this.rotationAnims.find(
-            (a) => a.grid === gridName && a.row === r && a.col === c
-          );
-          const animProgress = anim ? Math.min(1, (now - anim.startTime) / anim.duration) : 1;
-
-          // Check for flash
-          const flash = this.flashTiles.find(
-            (f) => f.grid === gridName && f.row === r && f.col === c
-          );
-
-          this._drawTile(
-            ctx,
-            tile,
-            x,
-            y,
-            tileSize,
-            color,
-            poweredColor,
-            interactive,
-            animProgress,
-            flash ? flash.color : null,
-            flash ? (now - flash.startTime) / 400 : 0
-          );
-        }
-      }
-
-      // Interactive border
-      if (interactive) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.5 + Math.sin(now / 400) * 0.2;
-        ctx.setLineDash([5, 5]);
-        ctx.strokeRect(bx - 3, by - 3, tileSize * GRID_SIZE + 6, tileSize * GRID_SIZE + 6);
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    _drawTile(ctx, tile, x, y, size, color, poweredColor, interactive, animProg, flashColor, flashProg) {
+    _drawTile(ctx, tile, x, y, size, flashColor, flashProg) {
       const pad = 1;
-      const ix = x + pad;
-      const iy = y + pad;
-      const is = size - pad * 2;
 
       // Background
-      ctx.fillStyle = interactive ? '#1e1e3a' : '#16162c';
-      ctx.fillRect(ix, iy, is, is);
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(x + pad, y + pad, size - pad * 2, size - pad * 2);
 
       // Flash overlay
       if (flashColor && flashProg < 1) {
+        ctx.globalAlpha = 0.5 * (1 - flashProg);
         ctx.fillStyle = flashColor;
-        ctx.globalAlpha = 0.4 * (1 - flashProg);
-        ctx.fillRect(ix, iy, is, is);
+        ctx.fillRect(x + pad, y + pad, size - pad * 2, size - pad * 2);
         ctx.globalAlpha = 1;
       }
 
       // Border
       ctx.strokeStyle = '#2a2a4a';
       ctx.lineWidth = 0.5;
-      ctx.strokeRect(ix, iy, is, is);
+      ctx.strokeRect(x + pad, y + pad, size - pad * 2, size - pad * 2);
 
-      if (tile.type === TYPES.EMPTY) return;
+      if (tile.type === TYPE.EMPTY) return;
 
       const cx = x + size / 2;
       const cy = y + size / 2;
-      const connections = tile.getConnections();
-      const pipeColor = tile.powered ? poweredColor : color;
-      const pipeWidth = size * 0.2;
+      const conns = tile.connections();
 
-      // Glow for powered
+      // Colors
+      const pipeColor = tile.powered ? '#00ffcc' : '#1a5a6a';
+      const pw = size * 0.22;
+
+      // Glow
       if (tile.powered) {
-        ctx.shadowColor = poweredColor;
-        ctx.shadowBlur = 6;
-      }
-
-      // Rotation animation effect
-      if (animProg < 1) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        const angle = (1 - animProg) * (-Math.PI / 2);
-        ctx.rotate(angle);
-        ctx.translate(-cx, -cy);
+        ctx.shadowColor = '#00e5ff';
+        ctx.shadowBlur = 8;
       }
 
       ctx.strokeStyle = pipeColor;
-      ctx.lineWidth = pipeWidth;
+      ctx.lineWidth = pw;
       ctx.lineCap = 'round';
 
-      for (const dir of connections) {
+      for (const dir of conns) {
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         switch (dir) {
-          case DIR.TOP:
-            ctx.lineTo(cx, y + pad);
-            break;
-          case DIR.RIGHT:
-            ctx.lineTo(x + size - pad, cy);
-            break;
-          case DIR.BOTTOM:
-            ctx.lineTo(cx, y + size - pad);
-            break;
-          case DIR.LEFT:
-            ctx.lineTo(x + pad, cy);
-            break;
+          case 0: ctx.lineTo(cx, y + pad); break;
+          case 1: ctx.lineTo(x + size - pad, cy); break;
+          case 2: ctx.lineTo(cx, y + size - pad); break;
+          case 3: ctx.lineTo(x + pad, cy); break;
         }
         ctx.stroke();
       }
@@ -899,81 +542,52 @@
       // Center node
       ctx.fillStyle = pipeColor;
       ctx.beginPath();
-      ctx.arc(cx, cy, pipeWidth * 0.55, 0, Math.PI * 2);
+      ctx.arc(cx, cy, pw * 0.55, 0, Math.PI * 2);
       ctx.fill();
-
-      if (animProg < 1) {
-        ctx.restore();
-      }
 
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
     }
 
-    _updateParticles(ctx, game, now) {
-      // Spawn particles on powered paths
-      if (game.playerGrid.circuitComplete && Math.random() < 0.4) {
-        this._spawnParticle(
-          game.playerGrid,
-          this.playerBoardX,
-          this.playerBoardY,
-          this.playerTileSize,
-          '#00e5ff'
-        );
-      }
-      if (game.aiGrid.circuitComplete && Math.random() < 0.4) {
-        this._spawnParticle(
-          game.aiGrid,
-          this.opponentBoardX,
-          this.opponentBoardY,
-          this.opponentTileSize,
-          '#ff6600'
-        );
+    _drawParticles(ctx, grid, now) {
+      // Spawn on powered tiles
+      if (grid.complete && Math.random() < 0.5) {
+        const powered = [];
+        for (let r = 0; r < GRID_SIZE; r++)
+          for (let c = 0; c < GRID_SIZE; c++)
+            if (grid.tiles[r][c].powered) powered.push({ r, c });
+        if (powered.length > 0) {
+          const cell = powered[Math.floor(Math.random() * powered.length)];
+          this.particles.push({
+            x: this.boardX + cell.c * this.tileSize + this.tileSize / 2 + (Math.random() - 0.5) * this.tileSize * 0.3,
+            y: this.boardY + cell.r * this.tileSize + this.tileSize / 2,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: 0.4 + Math.random() * 1,
+            life: 1,
+          });
+        }
       }
 
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const p = this.particles[i];
-        p.life -= 0.018;
+        p.life -= 0.02;
         p.x += p.vx;
         p.y += p.vy;
-
         if (p.life <= 0) {
           this.particles.splice(i, 1);
           continue;
         }
-
-        ctx.globalAlpha = p.life * 0.8;
-        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life * 0.7;
+        ctx.fillStyle = '#00e5ff';
         ctx.beginPath();
         ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
 
-      // Cap particles
-      if (this.particles.length > 100) {
-        this.particles.splice(0, this.particles.length - 100);
+      if (this.particles.length > 80) {
+        this.particles.splice(0, this.particles.length - 80);
       }
-    }
-
-    _spawnParticle(grid, bx, by, tileSize, color) {
-      const powered = [];
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-          if (grid.tiles[r][c].powered) powered.push({ r, c });
-        }
-      }
-      if (powered.length === 0) return;
-
-      const cell = powered[Math.floor(Math.random() * powered.length)];
-      this.particles.push({
-        x: bx + cell.c * tileSize + tileSize / 2 + (Math.random() - 0.5) * tileSize * 0.4,
-        y: by + cell.r * tileSize + tileSize / 2,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: 0.5 + Math.random() * 1.2,
-        life: 1,
-        color: color,
-      });
     }
   }
 
@@ -990,58 +604,31 @@
       this.playerGrid = new Grid();
       this.aiGrid = new Grid();
 
-      this.mode = 'rotate';
-      this.ap = INITIAL_AP;
-      this.power = POWER_START;
-      this.turn = 1;
-      this.turnTimer = TURN_TIME;
-      this.isPlayerTurn = true;
+      this.difficulty = 'medium';
+      this.scorePlayer = 0;
+      this.scoreAI = 0;
+      this.round = 1;
+      this.roundActive = false;
       this.gameOver = false;
 
-      this.aiActions = [];
-      this.aiNextActionTime = 0;
+      this.aiTimer = 0;
+      this.lastFrame = 0;
+      this.animId = null;
 
-      this.lastFrameTime = 0;
-      this.animFrameId = null;
-
-      this._setupInput();
+      this._bind();
     }
 
-    start() {
-      this.playerGrid.generate();
-      this.aiGrid.generate();
+    // ---- Input ----
 
-      this.mode = 'rotate';
-      this.ap = INITIAL_AP;
-      this.power = POWER_START;
-      this.turn = 1;
-      this.turnTimer = TURN_TIME;
-      this.isPlayerTurn = true;
-      this.gameOver = false;
-      this.aiActions = [];
-      this.renderer.particles = [];
-      this.renderer.rotationAnims = [];
-      this.renderer.flashTiles = [];
-
-      this._showScreen('screen-game');
-      this.renderer.resize();
-      this._updateUI();
-
-      this.lastFrameTime = performance.now();
-
-      if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
-      this._loop();
-    }
-
-    _setupInput() {
-      // Canvas touch/click
-      const handleTap = (e) => {
+    _bind() {
+      // Canvas tap
+      const tap = (e) => {
         e.preventDefault();
-        if (!this.isPlayerTurn || this.gameOver) return;
+        if (!this.roundActive) return;
 
         const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.renderer.logicalWidth / rect.width;
-        const scaleY = this.renderer.logicalHeight / rect.height;
+        const sx = this.renderer.w / rect.width;
+        const sy = this.renderer.h / rect.height;
 
         let cx, cy;
         if (e.touches && e.touches.length > 0) {
@@ -1055,276 +642,224 @@
           cy = e.clientY;
         }
 
-        const x = (cx - rect.left) * scaleX;
-        const y = (cy - rect.top) * scaleY;
-
+        const x = (cx - rect.left) * sx;
+        const y = (cy - rect.top) * sy;
         const hit = this.renderer.getTileAt(x, y);
         if (!hit) return;
 
-        this._handleTileInteraction(hit);
+        const tile = this.playerGrid.tiles[hit.row][hit.col];
+        if (tile.type === TYPE.EMPTY) return;
+
+        tile.rotate();
+        this.playerGrid.updatePowered();
+        this.renderer.flash(hit.row, hit.col, 'rgba(0,229,255,0.3)');
+        this._updateProgress();
+
+        if (this.playerGrid.complete) {
+          this._roundWin('player');
+        }
       };
 
-      this.canvas.addEventListener('touchstart', handleTap, { passive: false });
-      this.canvas.addEventListener('click', handleTap);
+      this.canvas.addEventListener('touchstart', tap, { passive: false });
+      this.canvas.addEventListener('click', tap);
+      this.canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
-      // Prevent scrolling on canvas
-      this.canvas.addEventListener('touchmove', (e) => e.preventDefault(), {
-        passive: false,
+      // Difficulty buttons
+      document.querySelectorAll('.diff-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.diff-btn').forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          this.difficulty = btn.dataset.diff;
+        });
       });
 
-      // Action buttons
-      document.getElementById('btn-rotate').addEventListener('click', () => {
-        if (!this.isPlayerTurn || this.gameOver) return;
-        this.mode = 'rotate';
-        this._updateUI();
-      });
+      // Start / restart
+      document.getElementById('btn-start').addEventListener('click', () => this.startMatch());
+      document.getElementById('btn-restart').addEventListener('click', () => this.startMatch());
 
-      document.getElementById('btn-sabotage').addEventListener('click', () => {
-        if (!this.isPlayerTurn || this.gameOver) return;
-        if (this.ap < SABOTAGE_COST) return;
-        this.mode = 'sabotage';
-        this._updateUI();
-      });
-
-      document.getElementById('btn-end-turn').addEventListener('click', () => {
-        if (!this.isPlayerTurn || this.gameOver) return;
-        this._endPlayerTurn();
-      });
-
-      // Start/restart
-      document.getElementById('btn-start').addEventListener('click', () => this.start());
-      document.getElementById('btn-restart').addEventListener('click', () => this.start());
-
-      // Window resize
+      // Resize
       window.addEventListener('resize', () => {
-        if (!this.gameOver) {
-          this.renderer.resize();
-        }
+        if (!this.gameOver) this.renderer.resize();
       });
     }
 
-    _handleTileInteraction(hit) {
-      if (this.mode === 'rotate' && hit.board === 'player') {
-        if (this.ap < ROTATE_COST) return;
+    // ---- Match flow ----
 
-        const tile = this.playerGrid.tiles[hit.row][hit.col];
-        if (tile.type === TYPES.EMPTY) return;
+    startMatch() {
+      this.scorePlayer = 0;
+      this.scoreAI = 0;
+      this.round = 1;
+      this.gameOver = false;
 
-        tile.rotate();
-        this.playerGrid.updatePowered();
-        this.ap -= ROTATE_COST;
+      this._showScreen('screen-game');
+      this.renderer.resize();
+      this._startRound();
+    }
 
-        this.renderer.addRotationAnim('player', hit.row, hit.col);
-        this._updateUI();
+    _startRound() {
+      this.playerGrid.generate();
+      this.aiGrid.generate();
+      this.roundActive = true;
+      this.aiTimer = 0;
+      this.renderer.particles = [];
+      this.renderer.flashTiles = [];
 
-        if (this.ap <= 0) this._endPlayerTurn();
-      } else if (this.mode === 'sabotage' && hit.board === 'opponent') {
-        if (this.ap < SABOTAGE_COST) return;
+      this._updateUI();
+      this._updateProgress();
 
-        const tile = this.aiGrid.tiles[hit.row][hit.col];
-        if (tile.type === TYPES.EMPTY) return;
+      this.lastFrame = performance.now();
+      if (this.animId) cancelAnimationFrame(this.animId);
+      this._loop();
 
-        tile.rotate();
-        this.aiGrid.updatePowered();
-        this.ap -= SABOTAGE_COST;
+      document.getElementById('status-text').textContent = 'Tap tiles to rotate!';
+    }
 
-        this.renderer.addRotationAnim('ai', hit.row, hit.col);
-        this.renderer.addFlash('ai', hit.row, hit.col, 'rgba(255,0,68,0.6)');
-        this.renderer.shake(280);
+    _roundWin(winner) {
+      this.roundActive = false;
 
-        // Switch back to rotate if not enough AP for another sabotage
-        if (this.ap < SABOTAGE_COST) {
-          this.mode = 'rotate';
+      if (winner === 'player') {
+        this.scorePlayer++;
+        // Penalty: scramble loser's board next round (stored as flag)
+        this._showRoundOverlay('ROUND WON!', 'You completed your circuit first.');
+      } else {
+        this.scoreAI++;
+        this.renderer.shake(400);
+        this._showRoundOverlay('ROUND LOST', 'The AI completed its circuit first.');
+      }
+
+      this._updateUI();
+
+      // Check match over
+      setTimeout(() => {
+        this._hideRoundOverlay();
+
+        if (this.scorePlayer >= ROUNDS_TO_WIN) {
+          this._endMatch(true);
+        } else if (this.scoreAI >= ROUNDS_TO_WIN) {
+          this._endMatch(false);
+        } else {
+          this.round++;
+          this._startRound();
+
+          // Apply scramble penalty to loser of previous round
+          if (winner === 'player') {
+            this.aiGrid.scrambleN(SCRAMBLE_PENALTY);
+          } else {
+            this.playerGrid.scrambleN(SCRAMBLE_PENALTY);
+            // Flash the scrambled tiles red
+            for (let r = 0; r < GRID_SIZE; r++)
+              for (let c = 0; c < GRID_SIZE; c++)
+                this.renderer.flash(r, c, 'rgba(255,0,68,0.25)');
+            this.renderer.shake(300);
+          }
+          this._updateProgress();
         }
-        this._updateUI();
-
-        if (this.ap < ROTATE_COST) this._endPlayerTurn();
-      }
+      }, 1800);
     }
 
-    _endPlayerTurn() {
-      this.isPlayerTurn = false;
-
-      // Update power based on circuit state
-      this._updatePower();
-
-      if (this._checkGameOver()) return;
-
-      // AI plans actions
-      this.aiActions = this.ai.takeTurn(this.aiGrid, this.playerGrid, INITIAL_AP);
-      this.aiNextActionTime = performance.now() + AI_ACTION_DELAY;
-
-      this._updateUI();
-    }
-
-    _processAIAction() {
-      if (this.aiActions.length === 0) {
-        // AI turn complete
-        this._updatePower();
-        if (this._checkGameOver()) return;
-
-        this.turn++;
-        this.isPlayerTurn = true;
-        this.ap = INITIAL_AP;
-        this.turnTimer = TURN_TIME;
-        this.mode = 'rotate';
-        this._updateUI();
-        return;
-      }
-
-      const action = this.aiActions.shift();
-
-      if (action.type === 'rotate') {
-        this.aiGrid.tiles[action.row][action.col].rotate();
-        this.aiGrid.updatePowered();
-        this.renderer.addRotationAnim('ai', action.row, action.col);
-      } else if (action.type === 'sabotage') {
-        this.playerGrid.tiles[action.row][action.col].rotate();
-        this.playerGrid.updatePowered();
-        this.renderer.addRotationAnim('player', action.row, action.col);
-        this.renderer.addFlash('player', action.row, action.col, 'rgba(255,0,68,0.6)');
-        this.renderer.shake(280);
-      }
-
-      this.aiNextActionTime = performance.now() + AI_ACTION_DELAY;
-      this._updateUI();
-    }
-
-    _updatePower() {
-      if (this.playerGrid.circuitComplete) {
-        this.power += POWER_PER_CIRCUIT;
-      }
-      if (this.aiGrid.circuitComplete) {
-        this.power -= POWER_PER_CIRCUIT;
-      }
-      this.power = Math.max(POWER_MIN, Math.min(POWER_MAX, this.power));
-    }
-
-    _checkGameOver() {
-      if (this.power >= POWER_MAX) {
-        this._endGame(true, 'You fully charged your battery!');
-        return true;
-      }
-      if (this.power <= POWER_MIN) {
-        this._endGame(false, 'The AI drained all your power!');
-        return true;
-      }
-      return false;
-    }
-
-    _endGame(playerWon, detail) {
+    _endMatch(playerWon) {
       this.gameOver = true;
+      this.roundActive = false;
 
-      const resultEl = document.getElementById('result-text');
-      resultEl.textContent = playerWon ? 'VICTORY' : 'DEFEAT';
-      resultEl.style.color = playerWon ? '#00e5ff' : '#ff4444';
+      const el = document.getElementById('result-text');
+      el.textContent = playerWon ? 'VICTORY!' : 'DEFEAT';
+      el.style.color = playerWon ? '#00e5ff' : '#ff4444';
 
-      document.getElementById('result-detail').textContent = detail;
+      document.getElementById('result-detail').textContent = playerWon
+        ? 'You won the match!'
+        : 'The AI won the match.';
       document.getElementById('result-stats').innerHTML =
-        '<span>Turns played: ' +
-        this.turn +
-        '</span><span>Final power: ' +
-        this.power +
-        '%</span>';
+        '<span>Final score: ' + this.scorePlayer + ' - ' + this.scoreAI + '</span>' +
+        '<span>Rounds played: ' + (this.round) + '</span>';
 
-      setTimeout(() => this._showScreen('screen-gameover'), 1200);
+      setTimeout(() => this._showScreen('screen-gameover'), 400);
     }
+
+    // ---- Game loop ----
+
+    _loop() {
+      const now = performance.now();
+      const dt = Math.min(now - this.lastFrame, 100);
+      this.lastFrame = now;
+
+      if (this.gameOver) return;
+
+      // AI tick
+      if (this.roundActive) {
+        this.aiTimer += dt;
+        const interval = AI_SPEED[this.difficulty] || 1500;
+        if (this.aiTimer >= interval) {
+          this.aiTimer -= interval;
+          this._aiMove();
+        }
+      }
+
+      // Render player board
+      this.renderer.draw(this.playerGrid);
+
+      this.animId = requestAnimationFrame(() => this._loop());
+    }
+
+    _aiMove() {
+      if (!this.roundActive || this.aiGrid.complete) return;
+
+      const move = this.ai.findBestMove(this.aiGrid);
+      if (move) {
+        this.aiGrid.tiles[move.row][move.col].rotate();
+        this.aiGrid.updatePowered();
+      } else {
+        // No improving move — random rotation
+        const candidates = [];
+        for (let r = 0; r < GRID_SIZE; r++)
+          for (let c = 0; c < GRID_SIZE; c++) {
+            const t = this.aiGrid.tiles[r][c];
+            if (t.type !== TYPE.EMPTY && t.type !== TYPE.CROSS) candidates.push({ r, c });
+          }
+        if (candidates.length > 0) {
+          const pick = candidates[Math.floor(Math.random() * candidates.length)];
+          this.aiGrid.tiles[pick.r][pick.c].rotate();
+          this.aiGrid.updatePowered();
+        }
+      }
+
+      this._updateProgress();
+
+      if (this.aiGrid.complete) {
+        this._roundWin('ai');
+      }
+    }
+
+    // ---- UI updates ----
 
     _updateUI() {
-      document.getElementById('turn-info').textContent = 'Turn ' + this.turn;
-      document.getElementById('ap-display').textContent =
-        'AP: ' + this.ap + '/' + INITIAL_AP;
+      document.getElementById('score-player').textContent = this.scorePlayer;
+      document.getElementById('score-ai').textContent = this.scoreAI;
+      document.getElementById('round-display').textContent = 'Round ' + this.round;
+    }
 
-      // Power meter
-      const pct = (this.power / POWER_MAX) * 100;
-      document.getElementById('power-fill').style.width = pct + '%';
+    _updateProgress() {
+      const pp = Math.round(this.playerGrid.progress() * 100);
+      const ap = Math.round(this.aiGrid.progress() * 100);
+      document.getElementById('progress-player').style.width = (this.playerGrid.complete ? 100 : pp) + '%';
+      document.getElementById('progress-ai').style.width = (this.aiGrid.complete ? 100 : ap) + '%';
+    }
 
-      // Circuit status
-      const statusEl = document.getElementById('circuit-status');
-      if (this.playerGrid.circuitComplete && this.aiGrid.circuitComplete) {
-        statusEl.textContent = 'BOTH CONNECTED';
-        statusEl.style.color = '#ffee00';
-      } else if (this.playerGrid.circuitComplete) {
-        statusEl.textContent = 'YOUR CIRCUIT ON';
-        statusEl.style.color = '#00e5ff';
-      } else if (this.aiGrid.circuitComplete) {
-        statusEl.textContent = 'AI CIRCUIT ON';
-        statusEl.style.color = '#ff6600';
-      } else {
-        statusEl.textContent = '';
-      }
+    _showRoundOverlay(title, detail) {
+      const overlay = document.getElementById('round-overlay');
+      document.getElementById('round-result-text').textContent = title;
+      document.getElementById('round-result-text').style.color =
+        title.includes('WON') ? '#00e5ff' : '#ff4444';
+      document.getElementById('round-result-detail').textContent = detail;
+      overlay.classList.remove('hidden');
+    }
 
-      // Mode buttons
-      const btnRotate = document.getElementById('btn-rotate');
-      const btnSabotage = document.getElementById('btn-sabotage');
-      const btnEnd = document.getElementById('btn-end-turn');
-
-      btnRotate.classList.toggle('active', this.mode === 'rotate');
-      btnSabotage.classList.toggle('active', this.mode === 'sabotage');
-
-      btnRotate.disabled = !this.isPlayerTurn;
-      btnSabotage.disabled = !this.isPlayerTurn || this.ap < SABOTAGE_COST;
-      btnEnd.disabled = !this.isPlayerTurn;
-
-      // Status text
-      let status = '';
-      if (this.gameOver) {
-        status = '';
-      } else if (!this.isPlayerTurn) {
-        status = 'AI is thinking...';
-      } else if (this.mode === 'rotate') {
-        status = 'Tap your tiles to rotate';
-      } else if (this.mode === 'sabotage') {
-        status = 'Tap opponent tile to disrupt';
-      }
-      document.getElementById('status-text').textContent = status;
+    _hideRoundOverlay() {
+      document.getElementById('round-overlay').classList.add('hidden');
     }
 
     _showScreen(id) {
       document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
       document.getElementById(id).classList.add('active');
-    }
-
-    _loop() {
-      const now = performance.now();
-      const dt = Math.min((now - this.lastFrameTime) / 1000, 0.1);
-      this.lastFrameTime = now;
-
-      if (this.gameOver) {
-        // Still render for effects
-        this.renderer.draw(this);
-        return;
-      }
-
-      // Turn timer
-      if (this.isPlayerTurn) {
-        this.turnTimer -= dt;
-        const timerEl = document.getElementById('turn-timer');
-        timerEl.textContent = Math.max(0, Math.ceil(this.turnTimer));
-
-        if (this.turnTimer <= 5) {
-          timerEl.classList.add('urgent');
-        } else {
-          timerEl.classList.remove('urgent');
-        }
-
-        if (this.turnTimer <= 0) {
-          this._endPlayerTurn();
-        }
-      } else {
-        document.getElementById('turn-timer').textContent = 'AI';
-        document.getElementById('turn-timer').classList.remove('urgent');
-      }
-
-      // AI action processing
-      if (!this.isPlayerTurn && now >= this.aiNextActionTime) {
-        this._processAIAction();
-      }
-
-      // Render
-      this.renderer.draw(this);
-
-      this.animFrameId = requestAnimationFrame(() => this._loop());
     }
   }
 

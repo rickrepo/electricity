@@ -15,22 +15,26 @@
     <div id="screen-title" class="screen active">
       <div class="title-content">
         <h1 class="game-title">CIRCUIT WARS</h1>
-        <p class="subtitle">Build your circuit. Sabotage your opponent.</p>
-        <button id="btn-start" class="primary-btn">START GAME</button>
+        <p class="subtitle">Race to connect your circuit before the AI does.</p>
+
+        <div class="difficulty-select">
+          <p class="diff-label">DIFFICULTY</p>
+          <div class="diff-buttons">
+            <button class="diff-btn" data-diff="easy">EASY</button>
+            <button class="diff-btn selected" data-diff="medium">MEDIUM</button>
+            <button class="diff-btn" data-diff="hard">HARD</button>
+          </div>
+        </div>
+
+        <button id="btn-start" class="primary-btn">PLAY</button>
+
         <div class="rules">
           <h3>How to Play</h3>
           <ul>
-            <li>Tap tiles to rotate pipes and build a connected path</li>
-            <li>Connect Power Source (top) to Battery (bottom)</li>
-            <li>Use <strong>Sabotage</strong> to rotate opponent's tiles</li>
-            <li>Compete for shared power — first to 100% wins</li>
-          </ul>
-          <h3>Strategy</h3>
-          <ul>
-            <li><strong>3 Action Points</strong> per turn — spend wisely</li>
-            <li>Rotate = 1 AP | Sabotage = 2 AP</li>
-            <li>Build redundant paths to survive sabotage</li>
-            <li>Break opponent's circuit at critical junctions</li>
+            <li>Tap tiles to rotate the pipes</li>
+            <li>Connect the top to the bottom to complete your circuit</li>
+            <li>First to complete their circuit wins the round</li>
+            <li>First to <strong>3 rounds</strong> wins the match</li>
           </ul>
         </div>
       </div>
@@ -39,26 +43,41 @@
     <!-- Game Screen -->
     <div id="screen-game" class="screen">
       <div id="game-header">
-        <span id="turn-info">Turn 1</span>
-        <span id="circuit-status"></span>
-        <span id="turn-timer">20</span>
-      </div>
-      <div id="power-meter-container">
-        <span class="meter-label you-label">YOU</span>
-        <div id="power-meter">
-          <div id="power-fill"></div>
+        <div id="score-display">
+          <span class="score-you">YOU <span id="score-player">0</span></span>
+          <span class="score-sep">:</span>
+          <span class="score-ai"><span id="score-ai">0</span> AI</span>
         </div>
-        <span class="meter-label ai-label">AI</span>
+        <span id="round-display">Round 1</span>
       </div>
+
+      <div id="progress-section">
+        <div class="progress-row">
+          <span class="prog-label you-label">YOU</span>
+          <div class="progress-bar">
+            <div id="progress-player" class="progress-fill player-fill"></div>
+          </div>
+        </div>
+        <div class="progress-row">
+          <span class="prog-label ai-label">AI</span>
+          <div class="progress-bar">
+            <div id="progress-ai" class="progress-fill ai-fill"></div>
+          </div>
+        </div>
+      </div>
+
       <canvas id="game-canvas"></canvas>
-      <div id="action-bar">
-        <button id="btn-rotate" class="action-btn active" data-mode="rotate">ROTATE</button>
-        <button id="btn-sabotage" class="action-btn" data-mode="sabotage">SABOTAGE</button>
-        <button id="btn-end-turn" class="action-btn end-turn">END TURN</button>
-      </div>
+
       <div id="status-bar">
-        <span id="ap-display">AP: 3/3</span>
-        <span id="status-text">Tap a tile to rotate</span>
+        <span id="status-text">Tap tiles to rotate</span>
+      </div>
+    </div>
+
+    <!-- Round Result Overlay -->
+    <div id="round-overlay" class="overlay hidden">
+      <div class="overlay-content">
+        <h2 id="round-result-text"></h2>
+        <p id="round-result-detail"></p>
       </div>
     </div>
 
@@ -66,7 +85,7 @@
     <div id="screen-gameover" class="screen">
       <div class="gameover-content">
         <h1 id="result-text">YOU WIN!</h1>
-        <p id="result-detail">You fully charged your battery!</p>
+        <p id="result-detail"></p>
         <div id="result-stats"></div>
         <button id="btn-restart" class="primary-btn">PLAY AGAIN</button>
       </div>
