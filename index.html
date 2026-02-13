@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Circuit Wars</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="game-container">
+
+    <!-- Title Screen -->
+    <div id="screen-title" class="screen active">
+      <div class="title-content">
+        <h1 class="game-title">CIRCUIT WARS</h1>
+        <p class="subtitle">Build your circuit. Sabotage your opponent.</p>
+        <button id="btn-start" class="primary-btn">START GAME</button>
+        <div class="rules">
+          <h3>How to Play</h3>
+          <ul>
+            <li>Tap tiles to rotate pipes and build a connected path</li>
+            <li>Connect Power Source (top) to Battery (bottom)</li>
+            <li>Use <strong>Sabotage</strong> to rotate opponent's tiles</li>
+            <li>Compete for shared power — first to 100% wins</li>
+          </ul>
+          <h3>Strategy</h3>
+          <ul>
+            <li><strong>3 Action Points</strong> per turn — spend wisely</li>
+            <li>Rotate = 1 AP | Sabotage = 2 AP</li>
+            <li>Build redundant paths to survive sabotage</li>
+            <li>Break opponent's circuit at critical junctions</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="screen-game" class="screen">
+      <div id="game-header">
+        <span id="turn-info">Turn 1</span>
+        <span id="circuit-status"></span>
+        <span id="turn-timer">20</span>
+      </div>
+      <div id="power-meter-container">
+        <span class="meter-label you-label">YOU</span>
+        <div id="power-meter">
+          <div id="power-fill"></div>
+        </div>
+        <span class="meter-label ai-label">AI</span>
+      </div>
+      <canvas id="game-canvas"></canvas>
+      <div id="action-bar">
+        <button id="btn-rotate" class="action-btn active" data-mode="rotate">ROTATE</button>
+        <button id="btn-sabotage" class="action-btn" data-mode="sabotage">SABOTAGE</button>
+        <button id="btn-end-turn" class="action-btn end-turn">END TURN</button>
+      </div>
+      <div id="status-bar">
+        <span id="ap-display">AP: 3/3</span>
+        <span id="status-text">Tap a tile to rotate</span>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="screen-gameover" class="screen">
+      <div class="gameover-content">
+        <h1 id="result-text">YOU WIN!</h1>
+        <p id="result-detail">You fully charged your battery!</p>
+        <div id="result-stats"></div>
+        <button id="btn-restart" class="primary-btn">PLAY AGAIN</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/game.js"></script>
+</body>
+</html>
