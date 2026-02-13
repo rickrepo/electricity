@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Circuit Wars</title>
+  <title>Ohm Zone</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,8 +14,8 @@
     <!-- Title Screen -->
     <div id="screen-title" class="screen active">
       <div class="title-content">
-        <h1 class="game-title">CIRCUIT WARS</h1>
-        <p class="subtitle">Race to connect your circuit before the AI does.</p>
+        <h1 class="game-title">OHM ZONE</h1>
+        <p class="subtitle">Power up the device. Don't blow it up.</p>
 
         <div class="difficulty-select">
           <p class="diff-label">DIFFICULTY</p>
@@ -26,16 +26,16 @@
           </div>
         </div>
 
-        <button id="btn-start" class="primary-btn">PLAY</button>
+        <button id="btn-start" class="primary-btn">START</button>
 
-        <div class="rules">
-          <h3>How to Play</h3>
-          <ul>
-            <li>Tap tiles to rotate the pipes</li>
-            <li>Connect the top to the bottom to complete your circuit</li>
-            <li>First to complete their circuit wins the round</li>
-            <li>First to <strong>3 rounds</strong> wins the match</li>
-          </ul>
+        <div class="formulas">
+          <h3>Remember</h3>
+          <div class="formula-grid">
+            <span class="formula">V = I &times; R</span>
+            <span class="formula">I = V / R</span>
+            <span class="formula">R = V / I</span>
+            <span class="formula">P = V &times; I</span>
+          </div>
         </div>
       </div>
     </div>
@@ -43,48 +43,37 @@
     <!-- Game Screen -->
     <div id="screen-game" class="screen">
       <div id="game-header">
-        <div id="score-display">
-          <span class="score-you">YOU <span id="score-player">0</span></span>
-          <span class="score-sep">:</span>
-          <span class="score-ai"><span id="score-ai">0</span> AI</span>
-        </div>
-        <span id="round-display">Round 1</span>
+        <span id="round-display">1 / 10</span>
+        <span id="score-display">0</span>
+        <span id="streak-display"></span>
       </div>
 
-      <div id="progress-section">
-        <div class="progress-row">
-          <span class="prog-label you-label">YOU</span>
-          <div class="progress-bar">
-            <div id="progress-player" class="progress-fill player-fill"></div>
-          </div>
-        </div>
-        <div class="progress-row">
-          <span class="prog-label ai-label">AI</span>
-          <div class="progress-bar">
-            <div id="progress-ai" class="progress-fill ai-fill"></div>
-          </div>
-        </div>
+      <div id="timer-bar-container">
+        <div id="timer-bar"></div>
       </div>
 
-      <canvas id="game-canvas"></canvas>
+      <canvas id="circuit-canvas"></canvas>
 
-      <div id="status-bar">
-        <span id="status-text">Tap tiles to rotate</span>
+      <div id="question-box">
+        <p id="question-text"></p>
       </div>
-    </div>
 
-    <!-- Round Result Overlay -->
-    <div id="round-overlay" class="overlay hidden">
-      <div class="overlay-content">
-        <h2 id="round-result-text"></h2>
-        <p id="round-result-detail"></p>
+      <div id="answers">
+        <button class="answer-btn" data-idx="0"></button>
+        <button class="answer-btn" data-idx="1"></button>
+        <button class="answer-btn" data-idx="2"></button>
+        <button class="answer-btn" data-idx="3"></button>
+      </div>
+
+      <div id="feedback-bar">
+        <span id="feedback-text"></span>
       </div>
     </div>
 
     <!-- Game Over Screen -->
     <div id="screen-gameover" class="screen">
       <div class="gameover-content">
-        <h1 id="result-text">YOU WIN!</h1>
+        <h1 id="result-title">NICE WORK!</h1>
         <p id="result-detail"></p>
         <div id="result-stats"></div>
         <button id="btn-restart" class="primary-btn">PLAY AGAIN</button>
