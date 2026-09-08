@@ -2,86 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <title>Ohm Zone</title>
-  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Ricky - Portfolio</title>
+  <meta name="title" content="Ricky - Software Tinkerer">
+  <meta name="description" content="Ricky's portfolio: a 3D desk with a CRT monitor running RickyOS, a tiny operating system with a showcase, a terminal, and games.">
+  <meta name="theme-color" content="#06080a">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Ricky - Software Tinkerer">
+  <meta property="og:description" content="A small room, a big CRT, and an operating system that only exists here.">
+  <meta property="og:image" content="https://rickrepo.github.io/electricity/assets/preview.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Ricky - Software Tinkerer">
+  <meta name="twitter:description" content="A small room, a big CRT, and an operating system that only exists here.">
+  <meta name="twitter:image" content="https://rickrepo.github.io/electricity/assets/preview.jpg">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/vt323-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/silkscreen-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/boot.css">
+  <link rel="stylesheet" href="css/os.css">
+  <link rel="stylesheet" href="css/apps.css">
+  <link rel="modulepreload" href="vendor/three.min.js">
 </head>
-<body>
-  <div id="game-container">
-
-    <!-- Title Screen -->
-    <div id="screen-title" class="screen active">
-      <div class="title-content">
-        <h1 class="game-title">OHM ZONE</h1>
-        <p class="subtitle">Power up the device. Don't blow it up.</p>
-
-        <div class="difficulty-select">
-          <p class="diff-label">DIFFICULTY</p>
-          <div class="diff-buttons">
-            <button class="diff-btn" data-diff="easy">EASY</button>
-            <button class="diff-btn selected" data-diff="medium">MEDIUM</button>
-            <button class="diff-btn" data-diff="hard">HARD</button>
-          </div>
-        </div>
-
-        <button id="btn-start" class="primary-btn">START</button>
-
-        <div class="formulas">
-          <h3>Remember</h3>
-          <div class="formula-grid">
-            <span class="formula">V = I &times; R</span>
-            <span class="formula">I = V / R</span>
-            <span class="formula">R = V / I</span>
-            <span class="formula">P = V &times; I</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Game Screen -->
-    <div id="screen-game" class="screen">
-      <div id="game-header">
-        <span id="round-display">1 / 10</span>
-        <span id="score-display">0</span>
-        <span id="streak-display"></span>
-      </div>
-
-      <div id="timer-bar-container">
-        <div id="timer-bar"></div>
-      </div>
-
-      <canvas id="circuit-canvas"></canvas>
-
-      <div id="question-box">
-        <p id="question-text"></p>
-      </div>
-
-      <div id="answers">
-        <button class="answer-btn" data-idx="0"></button>
-        <button class="answer-btn" data-idx="1"></button>
-        <button class="answer-btn" data-idx="2"></button>
-        <button class="answer-btn" data-idx="3"></button>
-      </div>
-
-      <div id="feedback-bar">
-        <span id="feedback-text"></span>
-      </div>
-    </div>
-
-    <!-- Game Over Screen -->
-    <div id="screen-gameover" class="screen">
-      <div class="gameover-content">
-        <h1 id="result-title">NICE WORK!</h1>
-        <p id="result-detail"></p>
-        <div id="result-stats"></div>
-        <button id="btn-restart" class="primary-btn">PLAY AGAIN</button>
-      </div>
-    </div>
-
+<body data-mode="scene" data-cam="loading">
+  <!-- 3D layers: CSS3D (the monitor's DOM) sits under the WebGL canvas, which has a transparent hole where the screen is. -->
+  <div id="stage">
+    <div id="css3d"></div>
+    <div id="webgl"></div>
+    <div id="vignette"></div>
   </div>
 
-  <script src="js/game.js"></script>
+  <!-- RickyOS. In 3D mode this element is moved onto the monitor; in 2D mode it fills the window. -->
+  <div id="os-root" class="os" aria-label="RickyOS"></div>
+
+  <!-- Overlay UI for the 3D scene -->
+  <div id="hud"></div>
+
+  <!-- BIOS boot screen -->
+  <div id="boot" role="dialog" aria-label="Booting"></div>
+
+  <noscript>
+    <div style="position:fixed;inset:0;background:#000;color:#fff;font-family:monospace;padding:32px;z-index:999">
+      <p>RICKY SYSTEMS BIOS</p>
+      <p>JavaScript is required to boot this computer.</p>
+    </div>
+  </noscript>
+
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

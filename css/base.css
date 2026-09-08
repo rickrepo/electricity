@@ -1,0 +1,130 @@
+/* ============================================================
+   Ricky's portfolio — base styles, fonts, and design tokens
+   ============================================================ */
+
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/vt323-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/silkscreen-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/silkscreen-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('../assets/fonts/space-grotesk-var.woff2') format('woff2');
+}
+
+:root {
+  --font-mono: 'VT323', 'Courier New', monospace;
+  --font-pixel: 'Silkscreen', 'VT323', monospace;
+  --font-body: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Scene / HUD palette */
+  --hud-bg: rgba(6, 10, 12, 0.82);
+  --hud-fg: #e9f3ef;
+  --hud-accent: #52e0c4;
+  --hud-warn: #ffd166;
+
+  /* RickyOS palette (overridable at runtime by the Settings app) */
+  --os-accent: #ff6b4a;
+  --os-accent-dark: #c9432a;
+  --os-secondary: #3aa0a8;
+  --os-face: #ece6d6;
+  --os-face-dark: #d6cfbc;
+  --os-paper: #fbf8f0;
+  --os-ink: #1e1b18;
+  --os-muted: #6f6659;
+  --os-line: #1e1b18;
+  --os-desktop: #256470;
+  --os-desktop-2: #1b4c55;
+  --os-shadow: 4px 4px 0 var(--os-ink);
+  --os-shadow-sm: 2px 2px 0 var(--os-ink);
+  --os-title-inactive: #b9b2a0;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body { position: relative; }
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+a { color: inherit; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+[hidden] { display: none !important; }
+
+/* Blinking block cursor used by the BIOS, HUD, terminal, and shutdown screens */
+.cursor-blink::after {
+  content: '';
+  display: inline-block;
+  width: 0.6em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: currentColor;
+  animation: blink 0.8s steps(1, end) infinite;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Animated "..." suffix */
+.dots::after {
+  content: '';
+  display: inline-block;
+  width: 1.8em;
+  text-align: left;
+  animation: dots 1.2s steps(1, end) infinite;
+}
+@keyframes dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-blink::after, .dots::after { animation-duration: 1.6s; }
+}

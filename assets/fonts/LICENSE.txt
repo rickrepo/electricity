@@ -1,0 +1,7 @@
+Fonts in this directory are distributed under the SIL Open Font License 1.1.
+
+- VT323          (c) Peter Hull        https://fonts.google.com/specimen/VT323
+- Silkscreen     (c) Jason Kottke      https://fonts.google.com/specimen/Silkscreen
+- Space Grotesk  (c) Florian Karsten   https://fonts.google.com/specimen/Space+Grotesk
+
+Full license text: https://openfontlicense.org/open-font-license-official-text/
