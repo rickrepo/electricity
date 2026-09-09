@@ -235,13 +235,27 @@ export function createRoom({ scene }) {
   for (let i = 0; i < 5; i++) box(142, 10, 125, i % 2 ? mats.black : mats.white, { x: 420, y: DESK.top + 5 + i * 10, z: DESK.z - 180, ry: (i - 2) * 0.08 });
   cyl(40, 95, mats.white, { x: 300, y: DESK.top + 47, z: DESK.z + 80 });
 
-  /* the poster over the desk */
-  box(640, 940, 16, mats.black, { x: 0, y: 1720, z: ROOM.back + 8, cast: false });
+  /* the poster over the desk: a real photograph if assets/poster.jpg exists
+     (or the page provides one), the drawn silhouette until then */
+  const frame = box(640, 940, 16, mats.black, { x: 0, y: 1720, z: ROOM.back + 8, cast: false });
   const posterTex = tex(dunkWallpaper());
   posterTex.wrapS = posterTex.wrapT = THREE.ClampToEdgeWrapping;
-  const poster = new THREE.Mesh(new THREE.PlaneGeometry(600, 900), new THREE.MeshStandardMaterial({ map: posterTex, roughness: 0.6 }));
+  const posterMat = new THREE.MeshStandardMaterial({ map: posterTex, roughness: 0.6 });
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(600, 900), posterMat);
   poster.position.set(0, 1720, ROOM.back + 17);
   group.add(poster);
+  const photoSrc = (typeof window !== 'undefined' && window.POSTER_PHOTO) || 'assets/poster.jpg';
+  new THREE.TextureLoader().load(photoSrc, (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    const w = 600, h = Math.min(1100, Math.max(500, w * (t.image.height / t.image.width)));
+    poster.geometry.dispose();
+    poster.geometry = new THREE.PlaneGeometry(w, h);
+    frame.geometry.dispose();
+    frame.geometry = new THREE.BoxGeometry(w + 40, h + 40, 16);
+    posterMat.map = t;
+    posterMat.needsUpdate = true;
+  }, undefined, () => { /* no photo on disk: the drawing stays */ });
 
   /* the bed, back-left corner */
   const bedX = -ROOM.halfW + 520, bedZ = ROOM.front - 1040;

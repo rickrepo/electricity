@@ -2,7 +2,8 @@
 
 2007. The den of someone born in 1989, with a first-generation iPhone on the
 desk. Everything is built from three.js primitives and canvas-drawn
-surfaces: no 3D models, no image files, no build step.
+surfaces: no 3D models, no build step, and no image files except the one
+photo you choose for the poster.
 
 You walk in and the phone boots. Drag to look around the room: the poster
 over the desk, the bed, two 1200s and a mixer along the wall with a crate of
@@ -11,8 +12,15 @@ buggy on the floor and another on the shelf, a window with weather. Click
 anywhere to walk up to the desk, click the phone to pick it up (the camera
 rolls to the phone's own up vector and fits it to your viewport), click the
 bezel or press Esc to put it down, click away to step back. The turntables
-spin if you click them. There are no buttons on the page: the room is the
-interface.
+spin if you click them. There are no buttons or words on the page: the room is
+the interface.
+
+## The poster
+
+The frame over the desk shows a drawn silhouette until you give it a real
+photograph. Drop a portrait image at `assets/poster.jpg` (any size; it is
+fitted to a 600 mm wide frame) and the room picks it up on the next load.
+Make sure you have the right to use the photo you choose.
 
 The phone runs software drawn in the manner of the first iPhone OS:
 

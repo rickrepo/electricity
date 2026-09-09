@@ -23,38 +23,12 @@ body {
 #stage canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.6s ease; touch-action: none; }
 body.ready #stage canvas { opacity: 1; }
 
-#hud {
-  position: fixed; top: 0; left: 0; right: 0;
-  display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
-  padding: clamp(16px, 3vw, 32px);
-  pointer-events: none;
-  opacity: 0; transform: translateY(-6px);
-  transition: opacity 0.9s ease 0.35s, transform 0.9s ease 0.35s;
-}
-body.ready #hud { opacity: 1; transform: none; }
-body.close #hud { opacity: 0; transform: translateY(-6px); transition-delay: 0s; }
-.brand h1 { margin: 0 0 6px; font-size: clamp(20px, 2.4vw, 26px); font-weight: 600; letter-spacing: -0.01em; }
-.brand p { margin: 0; max-width: 36ch; font-size: 14px; line-height: 1.45; color: var(--ink-dim); text-wrap: pretty; }
 
-.hint {
-  position: fixed; left: 50%; bottom: clamp(18px, 4vh, 36px); transform: translateX(-50%);
-  margin: 0; padding: 0 16px; max-width: 92vw;
-  font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; text-align: center;
-  color: var(--ink-dim); pointer-events: none;
-  opacity: 0; transition: opacity 0.6s ease;
-}
-body.ready .hint { opacity: 1; }
-body.ready .hint.hide { opacity: 0; }
 
 .fail { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: var(--bg); text-align: center; font-size: 16px; line-height: 1.5; }
 .fail[hidden] { display: none; }
 .fail p { max-width: 40ch; margin: 0; }
 
-@media (max-width: 640px) {
-  #hud { flex-direction: column; gap: 14px; }
-  .brand p { font-size: 13px; }
-  .hint { letter-spacing: 0.08em; }
-}
 @media (prefers-reduced-motion: reduce) {
-  #stage canvas, #hud, .hint { transition: none; }
+  #stage canvas { transition: none; }
 }

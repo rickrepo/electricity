@@ -10,7 +10,7 @@ import { createRoom, DESK } from './room.js';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
-const ui = { hint: $('hint'), fail: $('fail') };
+const ui = { fail: $('fail') };
 const coarse = matchMedia('(pointer: coarse)').matches;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
@@ -296,25 +296,8 @@ function main() {
   controls.addEventListener('start', () => { controls.autoRotate = false; idleSince = performance.now(); });
   controls.addEventListener('end', () => { idleSince = performance.now(); });
 
-  /* ---------- hints ---------- */
-  const hints = {
-    room: coarse ? 'Drag to look around  ·  tap anywhere to walk up to the desk' : 'Drag to look around  ·  click anywhere to walk up to the desk',
-    desk: coarse ? 'Tap the phone to pick it up  ·  tap away to step back' : 'Click the phone to pick it up  ·  click away or Esc to step back',
-    up: {
-      off: coarse ? 'Press the home button to wake it  ·  tap the bezel to put it down' : 'Press the home button to wake it  ·  Esc puts it down',
-      boot: '',
-      lock: coarse ? 'Slide to unlock  ·  tap the bezel to put it down' : 'Slide to unlock  ·  Esc or click the bezel to put it down',
-      home: coarse ? 'Safari has the about page  ·  the home button goes home' : 'Safari has the about page  ·  the home button goes home  ·  Esc puts it down',
-      app: coarse ? 'Press the home button to go home' : 'Press the home button to go home  ·  Esc puts it down',
-    },
-  };
-  function setHint(text) {
-    let t = text;
-    if (t === undefined) t = state === 'up' ? hints.up[os.mode] ?? '' : hints[state] ?? '';
-    ui.hint.textContent = t;
-    ui.hint.classList.toggle('hide', !t);
-  }
-  os.onMode(() => { if (state === 'up') setHint(); });
+  // no words over the room: the cursor and the phone itself do the explaining
+  const setHint = () => {};
   addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'Escape') { if (state === 'up') putDown(); else if (state === 'desk') stepBack(); }
