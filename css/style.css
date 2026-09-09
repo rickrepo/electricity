@@ -22,15 +22,18 @@ body {
 #stage { position: fixed; inset: 0; }
 /* a lens: soft vignette and a whisper of grain over the render */
 #stage::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
+  content: ''; position: absolute; inset: 0; pointer-events: none; transition: opacity 0.8s ease;
   background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.42) 100%);
 }
 #stage::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; opacity: 0.035;
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; opacity: 0.035; transition: opacity 0.8s ease;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 #stage canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.6s ease; touch-action: none; }
 body.ready #stage canvas { opacity: 1; }
+/* with the phone in hand the lens gets out of the way of the screen */
+body.in-hand #stage::before { opacity: 0; }
+body.in-hand #stage::after { opacity: 0.35; }
 
 
 

@@ -1,12 +1,14 @@
 // The phone's software: boot, lock screen, home screen, and the app runtime.
-// Everything is drawn on one 320 x 480 canvas at 2x. The physical buttons
-// drive it: home goes home or wakes it, sleep puts it to sleep.
+// Everything is drawn on one 320 x 480 canvas at 2x or 3x, whichever lands
+// a canvas pixel on about one device pixel when the phone is in hand. The
+// physical buttons drive it: home goes home or wakes it, sleep puts it to
+// sleep. The canvas is redrawn only when something on it changes.
 import { W, H, STATUS_H, CONTENT_Y, FONT, clamp, roundRect, navBar, pinstripes, inRect, clockText } from './ui.js';
 import { ICON, renderAtlas } from './icons.js';
 import { APPS, DOCK, ALL, PHOTO_KINDS } from './apps.js';
 import { earthWallpaper, rippleWallpaper, makePhoto } from './art.js';
 
-const S = 2;
+let S = 2;
 const TRACK = { x: 22, y: 419, w: 276, h: 46, r: 9 };
 const KNOB = { w: 64, h: 38, r: 8, pad: 4 };
 const TRAVEL = TRACK.w - KNOB.w - KNOB.pad * 2;
@@ -17,7 +19,8 @@ const DOCK_ICON_Y = 404;
 const easeOut = (t) => 1 - (1 - t) ** 3;
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
-export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
+export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {}) {
+  S = scale;
   const canvas = document.createElement('canvas');
   canvas.width = W * S;
   canvas.height = H * S;
@@ -26,20 +29,20 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
   const wallpapers = { earth: earthWallpaper(), ripples: rippleWallpaper() };
   const settings = { wallpaper: 'earth', brightness: 1, airplane: false };
   const photos = PHOTO_KINDS.map(([kind, caption]) => ({ canvas: makePhoto(kind), caption }));
-  let atlas = null, atlasMinute = -1;
+  let atlas = null, atlasMinute = -1, home = null;
 
   const st = {
-    mode: 'off', since: 0, last: -1e9, wasHome: false,
+    mode: 'off', since: 0, last: -1e9, wasHome: false, dirty: true, minute: -1,
     knob: 0, releaseAt: 0, releaseFrom: 0,
     app: null, appRect: null, pressed: null, states: {},
     listeners: new Set(),
   };
   const ptr = { active: false, mode: null, x0: 0, y0: 0, t0: 0, moved: false, lastY: 0, lastT: 0, vel: 0 };
-  const setMode = (mode, now) => { st.mode = mode; st.since = now; for (const fn of st.listeners) fn(mode); };
+  const setMode = (mode, now) => { st.mode = mode; st.since = now; st.dirty = true; for (const fn of st.listeners) fn(mode); };
 
   const os = {
     settings, photos, measure,
-    addPhoto(c, caption) { photos.unshift({ canvas: c, caption }); },
+    addPhoto(c, caption) { photos.unshift({ canvas: c, caption }); st.dirty = true; },
     open(id) {
       const app = ALL.find((a) => a.id === id);
       if (!app) return;
@@ -186,42 +189,57 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
     }
     return -1;
   };
-  function drawHome() {
-    const minute = Math.floor(Date.now() / 60000);
-    if (!atlas || minute !== atlasMinute) { atlas = renderAtlas(ALL, Date.now(), S); atlasMinute = minute; }
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-    statusBar();
-    ctx.font = `bold 11px ${FONT}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    const dg = ctx.createLinearGradient(0, DOCK_Y, 0, H);
+  // The home screen only changes by the minute (the clock icon), so it is
+  // drawn once into a cache and blitted; the pressed icon and the status bar
+  // are the only things drawn per frame.
+  function renderHome() {
+    if (!home) home = document.createElement('canvas');
+    home.width = W * S;
+    home.height = H * S;
+    const c = home.getContext('2d');
+    c.setTransform(S, 0, 0, S, 0, 0);
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, W, H);
+    c.font = `bold 11px ${FONT}`;
+    c.textAlign = 'center';
+    c.textBaseline = 'alphabetic';
+    const dg = c.createLinearGradient(0, DOCK_Y, 0, H);
     dg.addColorStop(0, '#6a6a6c');
     dg.addColorStop(0.08, '#4a4a4c');
     dg.addColorStop(1, '#151516');
-    ctx.fillStyle = dg;
-    ctx.fillRect(0, DOCK_Y, W, H - DOCK_Y);
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.fillRect(0, DOCK_Y, W, 1);
+    c.fillStyle = dg;
+    c.fillRect(0, DOCK_Y, W, H - DOCK_Y);
+    c.fillStyle = 'rgba(255,255,255,0.35)';
+    c.fillRect(0, DOCK_Y, W, 1);
     ALL.forEach((app, i) => {
       const r = iconRect(i);
       const sx = i * (atlas.cell + atlas.pad);
-      if (st.pressed === i) ctx.globalAlpha = 0.6;
-      ctx.drawImage(atlas.canvas, sx, 0, atlas.cell, atlas.cell, r.x, r.y, ICON, ICON);
-      ctx.globalAlpha = 1;
+      c.drawImage(atlas.canvas, sx, 0, atlas.cell, atlas.cell, r.x, r.y, ICON, ICON);
       if (i < 12) {
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 2;
-        ctx.shadowOffsetY = 1;
-        ctx.fillText(app.name, r.x + ICON / 2, r.y + ICON + 13);
-        ctx.shadowColor = 'transparent';
+        c.fillStyle = '#fff';
+        c.shadowColor = 'rgba(0,0,0,0.8)';
+        c.shadowBlur = 2;
+        c.shadowOffsetY = 1;
+        c.fillText(app.name, r.x + ICON / 2, r.y + ICON + 13);
+        c.shadowColor = 'transparent';
       } else {
-        ctx.drawImage(atlas.canvas, sx, atlas.cell + atlas.pad, atlas.cell, atlas.cell, r.x, r.y + ICON + 1, ICON, ICON);
+        c.drawImage(atlas.canvas, sx, atlas.cell + atlas.pad, atlas.cell, atlas.cell, r.x, r.y + ICON + 1, ICON, ICON);
       }
     });
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.beginPath(); ctx.arc(W / 2, 378, 2.5, 0, Math.PI * 2); ctx.fill();
+    c.fillStyle = 'rgba(255,255,255,0.9)';
+    c.beginPath(); c.arc(W / 2, 378, 2.5, 0, Math.PI * 2); c.fill();
+  }
+  function drawHome() {
+    const minute = Math.floor(Date.now() / 60000);
+    if (!atlas || minute !== atlasMinute) { atlas = renderAtlas(ALL, Date.now(), S); atlasMinute = minute; renderHome(); }
+    ctx.drawImage(home, 0, 0, W, H);
+    if (st.pressed !== null && st.pressed >= 0) {
+      const r = iconRect(st.pressed);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      roundRect(ctx, r.x, r.y, ICON, ICON, 10);
+      ctx.fill();
+    }
+    statusBar();
   }
 
   /* ---------- the app runtime ---------- */
@@ -335,10 +353,12 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
       ctx.fillRect(0, 0, W, H);
     }
     st.last = now;
+    st.dirty = false;
+    st.minute = Math.floor(Date.now() / 60000);
   }
 
   const animating = (now) => {
-    if (!['off', 'lock', 'home', 'app'].includes(st.mode)) return true;
+    if (!['off', 'home', 'app'].includes(st.mode)) return true; // boot, lock (its shimmer), transitions
     if (ptr.active || st.releaseAt > 0) return true;
     if (st.mode === 'app' && st.app) {
       const s = appState(st.app);
@@ -350,6 +370,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
 
   /* ---------- pointer routing (screen coordinates) ---------- */
   function down(x, y, now = performance.now()) {
+    st.dirty = true;
     Object.assign(ptr, { active: true, mode: null, x0: x, y0: y, t0: now, moved: false, lastY: y, lastT: now, vel: 0 });
     if (st.mode === 'lock') {
       const kx = TRACK.x + KNOB.pad + st.knob * TRAVEL, ky = TRACK.y + KNOB.pad;
@@ -383,6 +404,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
 
   function move(x, y, now = performance.now()) {
     if (!ptr.active) return;
+    st.dirty = true;
     if (ptr.mode === 'knob') { st.knob = clamp((x - ptr.grab - TRACK.x - KNOB.pad) / TRAVEL, 0, 1); return; }
     if (!ptr.moved && Math.hypot(x - ptr.x0, y - ptr.y0) > 8) ptr.moved = true;
     if (st.mode !== 'app' || !st.app) return;
@@ -405,6 +427,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
   function up(x, y, now = performance.now()) {
     if (!ptr.active) return;
     ptr.active = false;
+    st.dirty = true;
     const tap = !ptr.moved && now - ptr.t0 < 700;
     if (ptr.mode === 'knob') {
       if (st.knob > 0.96) { st.knob = 1; setMode('unlocking', now); }
@@ -438,11 +461,24 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
     get app() { return st.app?.id ?? null; },
     get scroll() { return st.app ? appState(st.app).scroll : 0; },
     onMode(fn) { st.listeners.add(fn); },
-    needsRedraw(now, interval) {
-      if (animating(now)) return true;
-      const min = st.mode === 'home' || st.mode === 'app' ? Math.max(interval, 200) : interval;
-      return now - st.last >= min;
+    // `interval` is the shortest gap between redraws: 0 in hand, longer far away.
+    needsRedraw(now, interval = 0) {
+      if (now - st.last < interval) return false;
+      if (st.dirty || animating(now)) return true;
+      if (Math.floor(Date.now() / 60000) !== st.minute) return true;
+      return now - st.last >= Math.max(interval, 1000);
     },
+    // 2x or 3x: whichever lands a canvas pixel on about one device pixel in hand
+    setScale(n) {
+      if (n === S) return false;
+      S = n;
+      canvas.width = W * S;
+      canvas.height = H * S;
+      atlas = null;
+      st.dirty = true;
+      return true;
+    },
+    get scale() { return S; },
     boot(now = performance.now()) { if (st.mode === 'off') setMode('boot', now); },
     wake(now = performance.now()) { if (st.mode === 'off') setMode('waking', now); },
     sleep(now = performance.now()) {

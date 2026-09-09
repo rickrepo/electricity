@@ -23,11 +23,16 @@ and varnish, the fabrics have a weave, and the edges are rounded.
 ## Performance
 
 The room is built to run at whatever your display refreshes at. Nothing
-that casts a shadow ever moves, so the two shadow maps are rendered once
-and frozen. Everything static is merged into one mesh per material at load,
-which brings the scene from about 350 draw calls a frame to under 100. The
-pixel ratio is capped at 1.5. Add `?fps` to the address to see frame rate,
-draw calls, and triangles in the corner.
+that casts a shadow ever moves, so the two shadow maps are rendered at the
+start and then frozen. Everything static is merged into one mesh per
+material at load, which brings the scene from about 350 draw calls a frame
+to under 100. Rendering starts at full resolution (up to 2x) and steps down
+a notch whenever the display's refresh rate is missed for a few seconds, so
+motion stays smooth on any GPU. The phone's screen is redrawn only when
+something on it changes, at a scale chosen so that one canvas pixel lands
+on about one device pixel when the phone is in hand: crisp icons, no
+shimmer. Add `?fps` to the address to see frame rate, draw calls,
+triangles, and the current resolution in the corner.
 
 ## The poster
 

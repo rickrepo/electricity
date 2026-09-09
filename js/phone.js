@@ -122,7 +122,8 @@ export function createPhone({ screenCanvas }) {
   screenTex.colorSpace = THREE.SRGBColorSpace;
   screenTex.anisotropy = 8;
   // Unlit: the picture is the light source. The glass around it carries the reflections.
-  const screenMat = new THREE.MeshBasicMaterial({ map: screenTex });
+  // Not tone mapped: the picture shows exactly the colours it was drawn with.
+  const screenMat = new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false });
   const screen = add(new THREE.Mesh(new THREE.PlaneGeometry(S.screen.width, S.screen.height), screenMat), { cast: false });
   screen.position.set(0, screenCY, halfD + 0.45);
   screen.name = 'screen';

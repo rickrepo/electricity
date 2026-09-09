@@ -44,8 +44,13 @@ function main() {
 
   /* ---------- renderer, scene ---------- */
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-  // 1.5x is plenty for a room; 2x costs almost twice the pixels for little gain
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
+  // Full resolution up to 2x. If the display's refresh rate cannot be held,
+  // the resolution steps down a notch at a time (see frame pacing below).
+  const dprTop = Math.min(devicePixelRatio || 1, 2);
+  const dprSteps = [dprTop, ...[1.5, 1.25, 1, 0.75].filter((v) => v < dprTop - 0.01)];
+  let dprIndex = 0;
+  let paceHold = 0;
+  renderer.setPixelRatio(dprSteps[0]);
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
@@ -86,6 +91,8 @@ function main() {
   const os = createPhoneOS({ carrier: 'Ricky', logo: 'R' });
   os.draw();
   const phone = createPhone({ screenCanvas: os.canvas });
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  phone.screenTexture.anisotropy = maxAniso;
   phone.group.position.y = SPEC.height / 2;
   rig.add(phone.group);
 
@@ -174,6 +181,24 @@ function main() {
     const d = fitDistance(SPEC.width, SPEC.height, coarse ? 0.98 : 0.92);
     return { pos: center.clone().addScaledVector(normal, d), target: center, up };
   };
+  // The screen is drawn at the scale that lands one canvas pixel on about one
+  // device pixel when the phone is in hand: crisp, without a blur or a shimmer.
+  const fitScale = () => {
+    const d = fitDistance(SPEC.width, SPEC.height, coarse ? 0.98 : 0.92);
+    const px = (SPEC.screen.height / (2 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))) * innerHeight * renderer.getPixelRatio();
+    return THREE.MathUtils.clamp(Math.ceil(px / os.height - 0.08), 2, 3);
+  };
+  const applyScale = () => { if (os.setScale(fitScale())) { phone.screenTexture.dispose(); phone.screenTexture.needsUpdate = true; } };
+  applyScale();
+  // Up close the screen is sampled one to one and mipmaps would only soften it,
+  // so the filter skips them; on the desk and across the room they keep it
+  // from shimmering. (They are always generated, so the texture is always
+  // allocated with its full set of levels.)
+  const screenClose = (close) => {
+    const t = phone.screenTexture;
+    t.minFilter = close ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
+    t.needsUpdate = true;
+  };
   const pickUp = () => {
     if (state !== 'room' && state !== 'desk') return;
     saved.pos.copy(camera.position);
@@ -183,6 +208,7 @@ function main() {
     state = 'moving';
     setHint('');
     document.body.classList.add('close', 'in-hand');
+    screenClose(true);
     flyTo(handPose(), state === 'room' ? 1600 : 950, () => { state = 'up'; setHint(); });
   };
   const putDown = () => {
@@ -190,6 +216,7 @@ function main() {
     state = 'moving';
     setHint('');
     document.body.classList.remove('in-hand');
+    screenClose(false);
     const back = saved.state === 'desk' && saved.pos.distanceTo(phoneCenter()) > 1500
       ? { pos: posePosition(POSES.desk), target: POSES.desk.target, up: WORLD_UP.clone() }
       : { pos: saved.pos.clone(), target: saved.target.clone(), up: WORLD_UP.clone() };
@@ -295,6 +322,8 @@ function main() {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+    applyScale();
+    paceHold = performance.now() + 2000;
     if (state === 'up') { const p = handPose(); camera.position.copy(p.pos); look.copy(p.target); camera.up.copy(p.up); camera.lookAt(look); }
   });
 
@@ -305,12 +334,39 @@ function main() {
   setHint('');
   flyTo({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP.clone() }, 3200, () => { settle('room'); controls.autoRotate = !reduced; });
 
+  /* ---------- frame pacing ---------- */
+  // Rendering starts at full resolution. If the display's refresh rate is
+  // missed in two windows in a row, the resolution steps down a notch and the
+  // screen's scale follows: smooth first, then sharp.
+  const applyDpr = (i) => {
+    dprIndex = i;
+    renderer.setPixelRatio(dprSteps[i]);
+    renderer.setSize(innerWidth, innerHeight);
+    applyScale();
+  };
+  const frames = [];
+  let paceSince = 0, paceBad = 0;
+  const pace = (now, frame) => {
+    if (document.hidden || now - started < 6000 || now < paceHold || dprIndex === dprSteps.length - 1) { frames.length = 0; paceSince = now; return; }
+    frames.push(frame);
+    if (now - paceSince < 2000) return;
+    paceSince = now;
+    const sorted = frames.splice(0).sort((a, b) => a - b);
+    if (sorted.length < 30) return;
+    const refresh = sorted[Math.floor(sorted.length * 0.1)];
+    const slow = sorted.filter((f) => f > refresh * 1.6).length / sorted.length;
+    paceBad = slow > 0.1 ? paceBad + 1 : 0;
+    if (paceBad >= 2) { paceBad = 0; paceHold = now + 3000; applyDpr(dprIndex + 1); }
+  };
+  document.addEventListener('visibilitychange', () => { paceHold = performance.now() + 2000; });
+
   /* ---------- loop ---------- */
   const screenWorld = new THREE.Vector3();
   let first = true;
   let lastFrame = performance.now();
   const started = performance.now();
-  // ?fps in the address bar shows frame rate and draw calls in the corner
+  let shadowFrames = 2, lateShadow = false;
+  // ?fps in the address bar shows frame rate, draw calls, and resolution in the corner
   let fpsBox = null, fpsFrames = 0, fpsSince = performance.now();
   if (/[?&]fps\b/.test(location.search)) {
     fpsBox = document.createElement('div');
@@ -320,7 +376,8 @@ function main() {
   const tick = () => {
     requestAnimationFrame(tick);
     const now = performance.now();
-    const dt = Math.min(0.05, (now - lastFrame) / 1000);
+    const frame = now - lastFrame;
+    const dt = Math.min(0.05, frame / 1000);
     lastFrame = now;
 
     if (move.active) {
@@ -335,7 +392,7 @@ function main() {
       camera.lookAt(look);
     } else if (state === 'room' || state === 'desk') {
       if (state === 'room' && !controls.autoRotate && !reduced && !down && now - idleSince > 12000) controls.autoRotate = true;
-      controls.update();
+      controls.update(dt);
       look.copy(controls.target);
     }
 
@@ -346,17 +403,22 @@ function main() {
     }
     room.update(dt);
 
+    // in hand the screen redraws on every frame it changes, on the desk at 60 Hz, across the room now and then
     phone.screen.getWorldPosition(screenWorld);
     const dist = camera.position.distanceTo(screenWorld);
-    const interval = dist < 300 ? 33 : dist < 900 ? 120 : 1000;
+    const interval = dist < 300 ? 0 : dist < 900 ? 16 : 250;
     if (os.needsRedraw(now, interval)) { os.draw(now); phone.screenTexture.needsUpdate = true; }
 
-    // shadows settle during the first seconds (textures and the poster photo arrive), then freeze
-    if (now - started < 4000) renderer.shadowMap.needsUpdate = true;
+    // Nothing that casts a shadow ever moves, so the shadow maps are rendered
+    // at the start, again when the poster's photo lands, and once more for luck.
+    if (room.shadowsDirty) { room.shadowsDirty = false; shadowFrames = 1; }
+    if (!lateShadow && now - started > 2500) { lateShadow = true; shadowFrames = 1; }
+    if (shadowFrames > 0) { renderer.shadowMap.needsUpdate = true; shadowFrames--; }
     renderer.render(scene, camera);
+    pace(now, frame);
     if (fpsBox) {
       fpsFrames++;
-      if (now - fpsSince >= 500) { fpsBox.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} fps · ${renderer.info.render.calls} draws · ${(renderer.info.render.triangles / 1000).toFixed(0)}k tris`; fpsFrames = 0; fpsSince = now; }
+      if (now - fpsSince >= 500) { fpsBox.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} fps · ${renderer.info.render.calls} draws · ${(renderer.info.render.triangles / 1000).toFixed(0)}k tris · ${dprSteps[dprIndex]}x · screen ${os.scale}x`; fpsFrames = 0; fpsSince = now; }
     }
     if (first) { first = false; document.body.classList.add('ready'); setTimeout(() => os.boot(), reduced ? 200 : 1600); }
   };

@@ -181,6 +181,18 @@ function clockFace() {
   return { canvas: c, draw };
 }
 
+// The platter's rim: satin aluminium with the four rows of strobe dots.
+function strobeTexture() {
+  const c = canvas(1024, 64), ctx = c.getContext('2d');
+  ctx.fillStyle = '#c4c7cb';
+  ctx.fillRect(0, 0, 1024, 64);
+  ctx.fillStyle = 'rgba(0,0,0,0.05)';
+  for (let x = 0; x < 1024; x += 3) ctx.fillRect(x, 0, 1, 64);
+  ctx.fillStyle = '#2a2b2e';
+  for (const [y, n] of [[20, 128], [30, 136], [40, 144], [50, 152]]) for (let i = 0; i < n; i++) ctx.fillRect(Math.round(((i + 0.5) * 1024) / n) - 1, y - 1, 2, 2);
+  return c;
+}
+
 // A soft dark blob to sit under furniture: cheap contact shadow.
 function blobTexture() {
   const c = canvas(256, 256), ctx = c.getContext('2d');
@@ -218,6 +230,7 @@ export function createRoom({ scene }) {
   RectAreaLightUniformsLib.init();
   const group = new THREE.Group();
   scene.add(group);
+  let shadowsDirty = false;
 
   const wood = woodMaps();
   const deskWood = woodMaps({ base: '#7a4a2a', dark: '#4a2a14', light: '#96603a', planks: 3 });
@@ -398,6 +411,7 @@ export function createRoom({ scene }) {
   group.add(gloss);
   const photoSrc = (typeof window !== 'undefined' && window.POSTER_PHOTO) || 'assets/poster.jpg';
   new THREE.TextureLoader().load(photoSrc, (t) => {
+    shadowsDirty = true;
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 8;
     const w = 600, h = Math.min(1100, Math.max(500, w * (t.image.height / t.image.width)));
@@ -434,44 +448,91 @@ export function createRoom({ scene }) {
     rbox(240, 90, 100, 35, mats.red, { x: bedX + dx + 10, y: 70, z: bedZ + dz, ry });
   }
 
-  /* the decks along the left wall */
+  /* the decks along the left wall: two 1200s and a mixer on a slim stand */
   const decks = [];
   const djX = -ROOM.halfW + 300, djZ = -150;
-  rbox(560, 40, 1300, 6, mats.black, { x: djX, y: 730, z: djZ });
-  for (const dz of [-600, 600]) rbox(500, 710, 40, 6, mats.black, { x: djX, y: 355, z: djZ + dz });
+  const alu = new THREE.MeshStandardMaterial({ color: 0xb6b9bd, roughness: 0.42, metalness: 0.62 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.85 });
+  const vinyl = new THREE.MeshStandardMaterial({ color: 0x0b0b0d, roughness: 0.3, metalness: 0.05 });
+  const rim = new THREE.MeshStandardMaterial({ map: tex(strobeTexture()), roughness: 0.32, metalness: 0.75 });
+  const knob = new THREE.MeshStandardMaterial({ color: 0x2a2a2d, roughness: 0.55 });
+  const plate = new THREE.MeshStandardMaterial({ color: 0x3a3c40, roughness: 0.5, metalness: 0.5 });
+  const leds = [0x36d14a, 0xf2b731, 0xe3322b].map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.9, roughness: 0.4 }));
+  rbox(560, 30, 1300, 5, mats.black, { x: djX, y: 735, z: djZ });
+  for (const dz of [-600, 600]) rbox(500, 720, 30, 4, mats.black, { x: djX, y: 360, z: djZ + dz });
   shadowBlob(800, 1500, djX, 0, djZ);
-  const makeDeck = (z, angle) => {
+  const Y = new THREE.Vector3(0, 1, 0);
+  // In the deck's own frame x runs to the DJ's right and z toward the DJ.
+  const makeDeck = (z, angle, onRecord) => {
     const g = new THREE.Group();
     g.position.set(djX, 750, z);
     g.rotation.y = Math.PI / 2;
     group.add(g);
-    rbox(450, 90, 360, 8, mats.silver, { y: 45, parent: g });
+    // a rubber base under the die-cast top: 453 x 353 mm, the top 80 mm up
+    rbox(432, 26, 332, 5, rubber, { y: 13, parent: g });
+    rbox(453, 54, 353, 5, alu, { y: 53, parent: g });
+    // the platter: aluminium with strobe dots round the rim, a rubber mat, a record
     const platter = new THREE.Group();
-    platter.position.set(-40, 92, 0);
+    platter.position.set(-45, 80, 0);
     g.add(platter);
-    cyl(150, 8, mats.black, { y: 4, parent: platter, cast: false });
-    cyl(146, 3, new THREE.MeshStandardMaterial({ color: 0x0f0f11, roughness: 0.3, metalness: 0.1 }), { y: 9.5, parent: platter, cast: false });
-    cyl(50, 3.5, mats.red, { y: 10.5, parent: platter, cast: false });
-    box(40, 4.5, 8, mats.black, { x: -30, y: 11, parent: platter, cast: false });
-    cyl(5, 14, mats.silver, { y: 14, parent: platter, cast: false });
+    place(new THREE.Mesh(new THREE.CylinderGeometry(166, 166, 14, 96), [rim, alu, alu]), { y: 7, parent: platter, cast: false });
+    cyl(160, 3, rubber, { y: 15.5, parent: platter, cast: false, seg: 96 });
+    cyl(150, 2, vinyl, { y: 18, parent: platter, cast: false, seg: 96 });
+    cyl(50, 0.6, mats.red, { y: 19.3, parent: platter, cast: false, seg: 48 });
+    cyl(3.6, 12, mats.silver, { y: 23, parent: platter, cast: false, seg: 16 });
     platter.rotation.y = angle;
-    cyl(26, 24, mats.grey, { x: 165, y: 102, z: -120, parent: g });
-    const arm = cyl(4, 230, mats.silver, { x: 90, y: 118, z: -40, parent: g });
-    arm.rotation.set(Math.PI / 2, 0, 0.35);
-    box(26, 8, 14, mats.black, { x: 20, y: 114, z: 40, parent: g, ry: 0.6 });
-    box(14, 6, 110, mats.black, { x: 195, y: 93, z: 60, parent: g, cast: false });
-    rbox(30, 8, 16, 2, mats.grey, { x: 195, y: 97, z: 50, parent: g, cast: false });
-    rbox(44, 10, 32, 3, mats.charcoal, { x: -190, y: 95, z: 130, parent: g, cast: false });
-    const lamp = box(10, 10, 10, new THREE.MeshStandardMaterial({ color: 0x5a2b23, emissive: 0xff3a1a, emissiveIntensity: 0 }), { x: -190, y: 95, z: -110, parent: g, cast: false });
+    // the tonearm: pivot at the back right, an S-shaped arm, the counterweight behind it
+    const P = { x: 165, z: -118 }, L = 250;
+    cyl(34, 6, alu, { x: P.x, y: 83, z: P.z, parent: g, cast: false, seg: 48 });
+    cyl(23, 22, mats.black, { x: P.x, y: 97, z: P.z, parent: g, seg: 32 });
+    cyl(26, 4, alu, { x: P.x, y: 110, z: P.z, parent: g, cast: false, seg: 48 });
+    let end;
+    if (onRecord) {
+      // the stylus sits on the record at radius r, where the arm's arc crosses it
+      const dx = P.x + 45, dz = P.z, D = Math.hypot(dx, dz), r = 118;
+      const a = Math.atan2(dz, dx) + Math.acos((D * D + r * r - L * L) / (2 * D * r));
+      end = { x: -45 + r * Math.cos(a), z: r * Math.sin(a) };
+    } else end = { x: P.x - 27, z: P.z + 248 };
+    const dir = new THREE.Vector3(end.x - P.x, 0, end.z - P.z).normalize();
+    const side = new THREE.Vector3(-dir.z, 0, dir.x);
+    if (side.dot(new THREE.Vector3(-45 - P.x, 0, -P.z)) < 0) side.negate();
+    const at = (t, off, y) => new THREE.Vector3(P.x, y, P.z).addScaledVector(dir, t * L).addScaledVector(side, off);
+    const path = new THREE.CatmullRomCurve3([at(-0.24, 0, 112), at(0, 0, 112), at(0.45, 0, 111.5), at(0.72, -9, 111), at(0.9, 2, 110.5), at(1, 6, 110)], false, 'centripetal');
+    place(new THREE.Mesh(new THREE.TubeGeometry(path, 40, 4.2, 10, false), mats.silver), { parent: g });
+    const weight = place(new THREE.Mesh(new THREE.CylinderGeometry(15, 15, 28, 32), mats.black), { parent: g });
+    weight.quaternion.setFromUnitVectors(Y, dir);
+    weight.position.copy(at(-0.18, 0, 112));
+    let hs = dir.clone().applyAxisAngle(Y, 0.35);
+    if (hs.dot(side) < 0) hs = dir.clone().applyAxisAngle(Y, -0.35);
+    const ry = Math.atan2(hs.x, hs.z);
+    const shell = at(1, 6, 109).addScaledVector(hs, 12);
+    box(15, 7, 30, mats.black, { x: shell.x, y: shell.y, z: shell.z, ry, parent: g, cast: false });
+    const cart = shell.clone().addScaledVector(hs, 8);
+    box(9, 8, 12, mats.charcoal, { x: cart.x, y: 104, z: cart.z, ry, parent: g, cast: false });
+    // the arm rest to the right of the platter
+    cyl(3.5, 22, alu, { x: 150, y: 91, z: 21, parent: g, cast: false, seg: 12 });
+    box(12, 6, 8, mats.black, { x: 150, y: 103.5, z: 21, parent: g, cast: false });
+    // start/stop, the speed buttons, the pop-up strobe light, the pitch fader, power, hinges
+    cyl(17, 1.5, alu, { x: -186, y: 80.7, z: 132, parent: g, cast: false, seg: 32 });
+    cyl(15, 5, mats.black, { x: -186, y: 83, z: 132, parent: g, cast: false, seg: 32 });
+    for (const x of [-196, -170]) rbox(20, 5, 12, 1.5, knob, { x, y: 82, z: 96, parent: g, cast: false });
+    cyl(11, 16, mats.charcoal, { x: -150, y: 88, z: 122, parent: g, cast: false, seg: 24 });
+    const lamp = box(7, 7, 7, new THREE.MeshStandardMaterial({ color: 0x5a2b23, emissive: 0xff3a1a, emissiveIntensity: 0 }), { x: -143, y: 92, z: 114, parent: g, cast: false });
+    box(7, 1, 104, mats.black, { x: 196, y: 80.5, z: 70, parent: g, cast: false });
+    rbox(26, 7, 14, 2, knob, { x: 196, y: 84, z: 70, parent: g, cast: false });
+    box(1.5, 0.6, 14, mats.trim, { x: 196, y: 87.6, z: 70, parent: g, cast: false });
+    cyl(13, 5, mats.black, { x: -190, y: 82.5, z: -140, parent: g, cast: false, seg: 24 });
+    cyl(6, 9, alu, { x: -190, y: 88, z: -140, parent: g, cast: false, seg: 16 });
+    for (const x of [-150, 150]) box(24, 10, 8, mats.black, { x, y: 85, z: -172, parent: g, cast: false });
     return { group: g, platter, lamp, playing: false, meshes: [] };
   };
-  const deckA = makeDeck(djZ - 420, 0.3), deckB = makeDeck(djZ + 420, 2.1);
+  const deckA = makeDeck(djZ - 420, 0.3, true), deckB = makeDeck(djZ + 420, 2.1, false);
   for (const d of [deckA, deckB]) {
     d.group.updateWorldMatrix(true, true);
     const parts = [];
     d.group.traverse((m) => { if (m.isMesh && m !== d.lamp && !d.platter.getObjectById(m.id)) parts.push(m); });
     const geos = parts.map((m) => { let g = m.geometry.clone().applyMatrix4(m.matrixWorld); if (g.index) g = g.toNonIndexed(); for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); return { g, mat: m.material }; });
-    // the deck body is silver, the rest of its parts share a few materials: one mesh per material
+    // the deck's parts share a handful of materials: one mesh per material
     const byMat = new Map();
     for (const { g, mat } of geos) { (byMat.get(mat) || byMat.set(mat, []).get(mat)).push(g); }
     for (const m of parts) { m.parent.remove(m); m.geometry.dispose(); }
@@ -480,10 +541,23 @@ export function createRoom({ scene }) {
     d.meshes.push(d.lamp);
   }
   decks.push(deckA, deckB);
-  rbox(360, 80, 260, 6, mats.charcoal, { x: djX, y: 790, z: djZ });
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) cyl(10, 12, mats.grey, { x: djX - 60 + c * 120, y: 836, z: djZ - 70 + r * 50, cast: false });
-  box(120, 3, 10, mats.black, { x: djX + 120, y: 831, z: djZ, cast: false });
-  rbox(14, 10, 22, 3, mats.silver, { x: djX + 120, y: 836, z: djZ - 10, cast: false });
+  /* the mixer between them: two channel faders, a crossfader, knobs, meters */
+  const mixer = new THREE.Group();
+  mixer.position.set(djX, 750, djZ);
+  mixer.rotation.y = Math.PI / 2;
+  group.add(mixer);
+  rbox(250, 20, 330, 4, rubber, { y: 10, parent: mixer });
+  rbox(250, 50, 330, 4, mats.charcoal, { y: 45, parent: mixer });
+  box(238, 1.2, 318, plate, { y: 70.6, parent: mixer, cast: false });
+  for (const x of [-56, 56]) {
+    box(5, 1.2, 96, mats.black, { x, y: 71.3, z: 40, parent: mixer, cast: false });
+    rbox(22, 6, 12, 2, mats.black, { x, y: 74, z: x < 0 ? 62 : 22, parent: mixer, cast: false });
+    for (let i = 0; i < 4; i++) cyl(7.5, 9, knob, { x, y: 75, z: -128 + i * 32, parent: mixer, cast: false, seg: 20 });
+  }
+  box(90, 1.2, 5, mats.black, { y: 71.3, z: 142, parent: mixer, cast: false });
+  rbox(14, 6, 20, 2, mats.black, { x: 6, y: 74, z: 142, parent: mixer, cast: false });
+  for (const x of [-9, 9]) for (let j = 0; j < 8; j++) box(5, 0.8, 4, leds[j < 5 ? 0 : j < 7 ? 1 : 2], { x, y: 71.6, z: -30 - j * 11, parent: mixer, cast: false });
+  for (const x of [-18, 0, 18]) cyl(6, 7, knob, { x, y: 74, z: 90, parent: mixer, cast: false, seg: 16 });
   rbox(330, 280, 330, 6, mats.crate, { x: djX + 60, y: 140, z: djZ + 200 });
   for (let i = 0; i < 9; i++) box(4, 310, 310, new THREE.MeshStandardMaterial({ color: [0x1a1a1c, 0xd94a2b, 0xf5e6c8, 0x2f6fd0, 0x3aa64a][i % 5], roughness: 0.8 }), { x: djX + 60 - 110 + i * 26, y: 300, z: djZ + 200, rz: 0.12 });
   rbox(240, 30, 900, 4, mats.desk, { x: -ROOM.halfW + 120, y: 1650, z: djZ });
@@ -626,6 +700,8 @@ export function createRoom({ scene }) {
   let elapsed = 0;
   return {
     group, decks, interactives, lamp, sun, panel,
+    get shadowsDirty() { return shadowsDirty; },
+    set shadowsDirty(v) { shadowsDirty = v; },
     phoneSpot: new THREE.Vector3(0, DESK.top, DESK.z + 230),
     update(dt) {
       elapsed += dt;
