@@ -3,7 +3,7 @@
 // rug. The phone on the desk boots when you walk in. Click anywhere to walk
 // up to the desk, click the phone to pick it up, slide to unlock.
 import * as THREE from '../vendor/three.min.js';
-import { OrbitControls } from '../vendor/three.min.js';
+import { OrbitControls, RoundedBoxGeometry } from '../vendor/three.min.js';
 import { createPhone, SPEC } from './phone.js';
 import { createPhoneOS } from './os/core.js';
 import { createRoom, DESK } from './room.js';
@@ -47,7 +47,7 @@ function main() {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   stage.append(renderer.domElement);
@@ -56,7 +56,7 @@ function main() {
   scene.background = new THREE.Color(0x120f0d);
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(studioEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.35;
   pmrem.dispose();
 
   // near plane at 20 mm: nothing gets closer, and depth precision across the room depends on it
@@ -70,11 +70,11 @@ function main() {
   rig.rotation.x = -TILT;
   scene.add(rig);
   const standMat = new THREE.MeshStandardMaterial({ color: 0x232527, roughness: 0.65, metalness: 0.15 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(74, 6, 46), standMat);
+  const base = new THREE.Mesh(new RoundedBoxGeometry(74, 6, 46, 2, 2), standMat);
   base.position.set(room.phoneSpot.x, room.phoneSpot.y + 3, room.phoneSpot.z);
   base.castShadow = base.receiveShadow = true;
   scene.add(base);
-  const support = new THREE.Mesh(new THREE.BoxGeometry(26, 52, 6), standMat);
+  const support = new THREE.Mesh(new RoundedBoxGeometry(26, 52, 6, 2, 2), standMat);
   support.position.set(0, 29, -SPEC.depth / 2 - 3 - 0.3);
   support.castShadow = support.receiveShadow = true;
   rig.add(support);
@@ -84,25 +84,6 @@ function main() {
   const phone = createPhone({ screenCanvas: os.canvas });
   phone.group.position.y = SPEC.height / 2;
   rig.add(phone.group);
-
-  /* ---------- light: the window, the ceiling, the desk lamp ---------- */
-  const sun = new THREE.DirectionalLight(0xfff0dc, 2.6);
-  sun.position.set(2600, 2500, 2100);
-  sun.target.position.set(room.phoneSpot.x, room.phoneSpot.y, room.phoneSpot.z);
-  scene.add(sun.target);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = sun.shadow.camera.bottom = -1100;
-  sun.shadow.camera.right = sun.shadow.camera.top = 1100;
-  sun.shadow.camera.near = 500;
-  sun.shadow.camera.far = 8000;
-  sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 1.5;
-  scene.add(sun);
-  scene.add(new THREE.HemisphereLight(0xfff4e6, 0x5a4636, 0.7));
-  const ceilingLight = new THREE.PointLight(0xffe6c4, 1.1, 0, 0);
-  ceilingLight.position.set(200, 2450, 700);
-  scene.add(ceilingLight);
 
   /* ---------- camera: the room, the desk, the phone in hand ---------- */
   const controls = new OrbitControls(camera, renderer.domElement);

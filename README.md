@@ -5,15 +5,20 @@ desk. Everything is built from three.js primitives and canvas-drawn
 surfaces: no 3D models, no build step, and no image files except the one
 photo you choose for the poster.
 
-You walk in and the phone boots. Drag to look around the room: the poster
-over the desk, the bed, two 1200s and a mixer along the wall with a crate of
-records under them, the CRT with the N64 and a controller on the rug, a nitro
-buggy on the floor and another on the shelf, a window with weather. Click
-anywhere to walk up to the desk, click the phone to pick it up (the camera
-rolls to the phone's own up vector and fits it to your viewport), click the
-bezel or press Esc to put it down, click away to step back. The turntables
-spin if you click them. There are no buttons or words on the page: the room is
-the interface.
+You walk in at dusk and the phone boots. Drag to look around the room: the
+poster over the desk, the bed, two 1200s and a mixer along the wall with a
+crate of records under them, the CRT with the N64 and a controller on the
+rug, a nitro buggy on the floor and another on the shelf, the window with the
+curtains, a chair, a clock that keeps real time, a door. Click anywhere to
+walk up to the desk, click the phone to pick it up (the camera rolls to the
+phone's own up vector and fits it to your viewport), click the bezel or press
+Esc to put it down, click away to step back. The turntables spin if you click
+them. There are no buttons or words on the page: the room is the interface.
+
+The light is the desk lamp (a spotlight with soft shadows), the window (an
+area light and a low sun), and the glow of the CRT. Corners are darkened in
+the geometry, furniture sits on contact shadows, the wood has grain, bump,
+and varnish, the fabrics have a weave, and the edges are rounded.
 
 ## The poster
 
@@ -67,7 +72,7 @@ The room: 4 x 3.6 m, in millimetres, with the furniture placed by hand.
 index.html          the page: stage, a title, a hint
 css/style.css       the page chrome
 js/main.js          renderer, camera moves (room, desk, in hand), pointer handling
-js/room.js          the den: furniture, poster, decks, CRT and N64, buggies, window
+js/room.js          the den: materials, lights, furniture, poster, decks, CRT and N64, buggies
 js/phone.js         the phone (geometry and materials), SPEC has the measurements
 js/os/core.js       the software: boot, lock, home, app runtime (scrolling, nav bars)
 js/os/apps.js       the sixteen apps
@@ -75,7 +80,7 @@ js/os/icons.js      the home screen icons
 js/os/art.js        the poster (for the wall), the planet, the ripples, the photos
 js/os/ui.js         drawing helpers (bars, groups, toggles, bubbles)
 js/textures.js      the phone's surfaces
-vendor/three.min.js three.js + OrbitControls, bundled
+vendor/three.min.js three.js + OrbitControls, RoundedBoxGeometry, RectAreaLight, bundled
 scripts/            npm run vendor rebuilds the bundle
 ```
 

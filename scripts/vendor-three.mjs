@@ -1,4 +1,4 @@
-// Bundles three.js (plus the one addon this site uses) into a single
+// Bundles three.js (plus the addons this site uses) into a single
 // minified ES module at vendor/three.min.js, so the site can be served as
 // plain static files with no build step.
 //
@@ -15,6 +15,8 @@ await build({
     contents: `
       export * from 'three';
       export { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      export { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+      export { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
     `,
     resolveDir: new URL('..', import.meta.url).pathname,
   },
@@ -23,7 +25,7 @@ await build({
   format: 'esm',
   target: 'es2020',
   legalComments: 'none',
-  banner: { js: `/* three.js r${pkg.version} (MIT) - https://github.com/mrdoob/three.js - bundled with OrbitControls */` },
+  banner: { js: `/* three.js r${pkg.version} (MIT) - https://github.com/mrdoob/three.js - bundled with OrbitControls, RoundedBoxGeometry, RectAreaLightUniformsLib */` },
   outfile: new URL('../vendor/three.min.js', import.meta.url).pathname,
 });
 
