@@ -44,12 +44,16 @@ function main() {
 
   /* ---------- renderer, scene ---------- */
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  // 1.5x is plenty for a room; 2x costs almost twice the pixels for little gain
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
+  // nothing that casts a shadow moves, so the shadow maps are rendered once
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
   stage.append(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -305,6 +309,14 @@ function main() {
   const screenWorld = new THREE.Vector3();
   let first = true;
   let lastFrame = performance.now();
+  const started = performance.now();
+  // ?fps in the address bar shows frame rate and draw calls in the corner
+  let fpsBox = null, fpsFrames = 0, fpsSince = performance.now();
+  if (/[?&]fps\b/.test(location.search)) {
+    fpsBox = document.createElement('div');
+    fpsBox.style.cssText = 'position:fixed;right:10px;bottom:8px;font:12px/1.4 ui-monospace,Menlo,monospace;color:#9be36f;background:rgba(0,0,0,0.55);padding:4px 8px;border-radius:4px;pointer-events:none;z-index:9';
+    document.body.append(fpsBox);
+  }
   const tick = () => {
     requestAnimationFrame(tick);
     const now = performance.now();
@@ -339,12 +351,18 @@ function main() {
     const interval = dist < 300 ? 33 : dist < 900 ? 120 : 1000;
     if (os.needsRedraw(now, interval)) { os.draw(now); phone.screenTexture.needsUpdate = true; }
 
+    // shadows settle during the first seconds (textures and the poster photo arrive), then freeze
+    if (now - started < 4000) renderer.shadowMap.needsUpdate = true;
     renderer.render(scene, camera);
+    if (fpsBox) {
+      fpsFrames++;
+      if (now - fpsSince >= 500) { fpsBox.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} fps · ${renderer.info.render.calls} draws · ${(renderer.info.render.triangles / 1000).toFixed(0)}k tris`; fpsFrames = 0; fpsSince = now; }
+    }
     if (first) { first = false; document.body.classList.add('ready'); setTimeout(() => os.boot(), reduced ? 200 : 1600); }
   };
   tick();
 
-  window.ricky = { scene, camera, controls, phone, os, room, pickUp, putDown, walkUp, stepBack, pressButton, get state() { return state; } };
+  window.ricky = { scene, camera, controls, renderer, phone, os, room, pickUp, putDown, walkUp, stepBack, pressButton, get state() { return state; } };
 }
 
 try { main(); } catch (err) { console.error(err); ui.fail.hidden = false; ui.fail.querySelector('p').textContent = `Something went wrong while drawing the room: ${err.message || err}`; }

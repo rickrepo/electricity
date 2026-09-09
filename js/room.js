@@ -5,7 +5,7 @@
 // rug and another on the shelf, curtains, a chair, a clock, a door.
 // Boxes, cylinders, and canvas-drawn textures; the light does the rest.
 import * as THREE from '../vendor/three.min.js';
-import { RoundedBoxGeometry, RectAreaLightUniformsLib } from '../vendor/three.min.js';
+import { RoundedBoxGeometry, RectAreaLightUniformsLib, mergeGeometries } from '../vendor/three.min.js';
 import { dunkWallpaper } from './os/art.js';
 
 export const DESK = { top: 760, x: 0, z: -650, width: 1400, depth: 700 };
@@ -18,7 +18,7 @@ const tex = (c, { repeat = [1, 1], srgb = true } = {}) => {
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(repeat[0], repeat[1]);
-  t.anisotropy = 8;
+  t.anisotropy = 4;
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   return t;
 };
@@ -331,15 +331,12 @@ export function createRoom({ scene }) {
   sun.shadow.normalBias = 2.5;
   sun.shadow.radius = 4;
   group.add(sun);
-  group.add(new THREE.HemisphereLight(0x4a5a80, 0x3a2a1e, 0.42));
+  group.add(new THREE.HemisphereLight(0x5a6688, 0x3a2a1e, 0.55));
 
   /* ceiling light, off but there */
   const dome = new THREE.Mesh(new THREE.SphereGeometry(180, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf1e9d6, emissive: 0xffe6c0, emissiveIntensity: 0.25, roughness: 0.6, side: THREE.DoubleSide }));
   dome.position.set(200, ROOM.height - 2, 700);
   group.add(dome);
-  const ceilingLight = new THREE.PointLight(0xffe0b8, 0.35, 0, 0);
-  ceilingLight.position.set(200, ROOM.height - 120, 700);
-  group.add(ceilingLight);
 
   /* rug */
   const rugMesh = new THREE.Mesh(new THREE.PlaneGeometry(1800, 1200), new THREE.MeshStandardMaterial({ map: tex(rug.map), bumpMap: tex(rug.bump, { repeat: [6, 4], srgb: false }), bumpScale: 1.2, roughness: 1 }));
@@ -469,7 +466,19 @@ export function createRoom({ scene }) {
     return { group: g, platter, lamp, playing: false, meshes: [] };
   };
   const deckA = makeDeck(djZ - 420, 0.3), deckB = makeDeck(djZ + 420, 2.1);
-  for (const d of [deckA, deckB]) d.group.traverse((m) => { if (m.isMesh) d.meshes.push(m); });
+  for (const d of [deckA, deckB]) {
+    d.group.updateWorldMatrix(true, true);
+    const parts = [];
+    d.group.traverse((m) => { if (m.isMesh && m !== d.lamp && !d.platter.getObjectById(m.id)) parts.push(m); });
+    const geos = parts.map((m) => { let g = m.geometry.clone().applyMatrix4(m.matrixWorld); if (g.index) g = g.toNonIndexed(); for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); return { g, mat: m.material }; });
+    // the deck body is silver, the rest of its parts share a few materials: one mesh per material
+    const byMat = new Map();
+    for (const { g, mat } of geos) { (byMat.get(mat) || byMat.set(mat, []).get(mat)).push(g); }
+    for (const m of parts) { m.parent.remove(m); m.geometry.dispose(); }
+    for (const [mat, gs] of byMat) { const mesh = new THREE.Mesh(mergeGeometries(gs, false), mat); mesh.castShadow = mesh.receiveShadow = true; mesh.matrixAutoUpdate = false; group.add(mesh); d.meshes.push(mesh); }
+    d.platter.traverse((m) => { if (m.isMesh) d.meshes.push(m); });
+    d.meshes.push(d.lamp);
+  }
   decks.push(deckA, deckB);
   rbox(360, 80, 260, 6, mats.charcoal, { x: djX, y: 790, z: djZ });
   for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) cyl(10, 12, mats.grey, { x: djX - 60 + c * 120, y: 836, z: djZ - 70 + r * 50, cast: false });
@@ -577,6 +586,38 @@ export function createRoom({ scene }) {
   rbox(900, 2050, 44, 4, mats.trim, { x: doorX, y: 1025, z: ROOM.front - 32, cast: false });
   for (const [dy, dh] of [[1450, 700], [600, 700]]) box(640, dh, 12, new THREE.MeshStandardMaterial({ color: 0xdcd5c6, roughness: 0.6 }), { x: doorX, y: dy, z: ROOM.front - 56, cast: false });
   place(new THREE.Mesh(new THREE.SphereGeometry(32, 20, 14), mats.brass), { x: doorX - 360, y: 1000, z: ROOM.front - 80 });
+
+  /* Everything that never moves becomes one mesh per material: a few dozen
+     draw calls instead of a few hundred. The decks stay separate (they spin
+     and answer clicks), as do the shaded room planes, the poster (its
+     geometry changes when the photo arrives), and the screens. */
+  const keep = new Set([poster, gloss, frame, clock, clockRing, screen, tvGlass, sky, bulb, dome, floor, ceiling, rugMesh]);
+  for (const d of decks) { d.group.traverse((m) => keep.add(m)); for (const m of d.meshes) keep.add(m); }
+  group.updateWorldMatrix(true, true);
+  const buckets = new Map();
+  const merged = [];
+  group.traverse((m) => {
+    if (!m.isMesh || keep.has(m) || Array.isArray(m.material) || m.geometry.attributes.color || !m.geometry.attributes.uv) return;
+    let g = m.geometry.clone().applyMatrix4(m.matrixWorld);
+    if (g.index) g = g.toNonIndexed();
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+    const b = buckets.get(m.material) || { geos: [], cast: false, receive: false };
+    b.geos.push(g);
+    b.cast ||= m.castShadow;
+    b.receive ||= m.receiveShadow;
+    buckets.set(m.material, b);
+    merged.push(m);
+  });
+  for (const m of merged) { m.parent.remove(m); m.geometry.dispose(); }
+  for (const [mat, b] of buckets) {
+    const geo = mergeGeometries(b.geos, false);
+    if (!geo) continue;
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = b.cast;
+    mesh.receiveShadow = b.receive;
+    mesh.matrixAutoUpdate = false;
+    group.add(mesh);
+  }
 
   /* interactives */
   const interactives = [];

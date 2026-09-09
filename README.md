@@ -20,6 +20,15 @@ area light and a low sun), and the glow of the CRT. Corners are darkened in
 the geometry, furniture sits on contact shadows, the wood has grain, bump,
 and varnish, the fabrics have a weave, and the edges are rounded.
 
+## Performance
+
+The room is built to run at whatever your display refreshes at. Nothing
+that casts a shadow ever moves, so the two shadow maps are rendered once
+and frozen. Everything static is merged into one mesh per material at load,
+which brings the scene from about 350 draw calls a frame to under 100. The
+pixel ratio is capped at 1.5. Add `?fps` to the address to see frame rate,
+draw calls, and triangles in the corner.
+
 ## The poster
 
 The frame over the desk shows a drawn silhouette until you give it a real
