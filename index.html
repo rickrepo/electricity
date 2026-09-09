@@ -1,53 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>Ricky's Bench</title>
-  <meta name="title" content="Ricky's Bench">
-  <meta name="description" content="Ricky's portfolio: a late-night electronics workshop where a homemade computer runs RickyOS, an operating system with a notebook, a terminal, a scope, and games.">
-  <meta name="theme-color" content="#05070b">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ricky's Phone</title>
+  <meta name="description" content="A 2007-era iPhone rebuilt from three.js primitives. Look it over, pick it up, slide to unlock.">
+  <meta property="og:title" content="Ricky's Phone">
+  <meta property="og:description" content="A 2007-era iPhone rebuilt from three.js primitives. Look it over, pick it up, slide to unlock.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Ricky's Bench">
-  <meta property="og:description" content="A workshop, a homemade computer, and a portfolio hiding inside it.">
   <meta property="og:image" content="https://rickrepo.github.io/electricity/assets/preview.jpg">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Ricky's Bench">
-  <meta name="twitter:description" content="A workshop, a homemade computer, and a portfolio hiding inside it.">
-  <meta name="twitter:image" content="https://rickrepo.github.io/electricity/assets/preview.jpg">
+  <meta name="theme-color" content="#171412">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="assets/fonts/pixelify-sans-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="assets/fonts/ibm-plex-sans-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="assets/fonts/ibm-plex-mono-400.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/boot.css">
-  <link rel="stylesheet" href="css/os.css">
-  <link rel="stylesheet" href="css/apps.css">
-  <link rel="stylesheet" href="css/phone.css">
-  <link rel="modulepreload" href="vendor/three.min.js">
+  <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-cam="loading" data-device="crt">
-  <!-- 3D layers: the CSS3D layer (the monitor's DOM) sits under the WebGL canvas, which has a transparent hole where the screen is. -->
-  <div id="stage">
-    <div id="css3d"></div>
-    <div id="webgl"></div>
-    <div id="vignette"></div>
-  </div>
+<body>
+  <div id="stage" aria-label="A 3D replica of a first-generation iPhone on a stand"></div>
 
-  <!-- RickyOS. Moved onto the CRT (desktop) or the phone on the bench (mobile). -->
-  <div id="os-root" class="os" aria-label="RickyOS"></div>
-
-  <!-- Overlay for the 3D bench -->
-  <div id="hud"></div>
-
-  <!-- Breaker panel -->
-  <div id="gate"></div>
-
-  <noscript>
-    <div style="position:fixed;inset:0;background:#05070b;color:#f3eee4;font-family:monospace;padding:32px;z-index:999">
-      <p>RICKY'S BENCH</p>
-      <p>JavaScript is required to switch the bench on.</p>
+  <header id="hud">
+    <div class="brand">
+      <h1>Ricky's phone</h1>
+      <p>A 2007-era iPhone, rebuilt from three.js primitives. No 3D models, no image files: every part is geometry, every surface is drawn on a canvas.</p>
     </div>
+    <div class="actions">
+      <button id="flip" type="button">Flip it over</button>
+      <button id="pick" type="button">Pick it up</button>
+    </div>
+  </header>
+
+  <p id="hint" class="hint" aria-live="polite"></p>
+
+  <div id="fail" class="fail" hidden>
+    <p>This page needs WebGL to draw the phone, and this browser has it switched off. Try a current version of Chrome, Firefox, Safari, or Edge.</p>
+  </div>
+  <noscript>
+    <div class="fail"><p>JavaScript is required to draw the phone.</p></div>
   </noscript>
 
   <script type="module" src="js/main.js"></script>

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Ricky's portfolio: a 3D desk scene with a retro operating system running on the monitor. Static site, no build step required.",
+  "description": "Ricky's phone: a 2007-era iPhone rebuilt from three.js primitives. Static site, no build step required.",
   "scripts": {
     "start": "npx --yes serve -l 3000 .",
     "vendor": "node scripts/vendor-three.mjs"

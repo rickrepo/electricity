@@ -1,22 +1,14 @@
-# Ricky's Bench
+# Ricky's Phone
 
-A personal website disguised as a late-night electronics workshop. Visitors
-flip the MAIN breaker, the fluorescent tube flickers awake, and a homemade
-computer on the bench (the RK-1) boots **RickyOS**: a small operating system
-whose interface is built from bench equipment, with a lab notebook for the
-portfolio, a terminal, an oscilloscope, a schematic doodler, a chiptune
-jukebox, and three original games.
+A replica of a 2007-era iPhone, built entirely from three.js primitives and
+canvas-drawn surfaces. No 3D models, no image files, no build step.
 
-On a desktop you lean in to the CRT. On a phone you pick up the phone lying
-on the bench: it takes the exact shape of your own screen, so when you lift it
-RickyOS fills the display edge to edge like a real phone (home screen,
-full-screen apps, bottom sheets, and a bench button in the nav bar to put it
-back down).
-
-Everything is plain HTML, CSS, and JavaScript. No framework, no build step,
-no image or audio assets: the room is built from three.js primitives with
-canvas-drawn textures, and every sound (rain, the fan, the tube, the cat, the
-phone buzzing) is synthesized with the Web Audio API.
+The phone sits on a stand in a small studio. Drag to look around, scroll or
+pinch to zoom, use **Flip it over** for the back. Click or tap the phone to
+pick it up: the camera rolls to the phone's own up vector and fits the screen
+to your viewport, so on a phone it reads like a phone. The lock screen keeps
+real time, the "slide to unlock" text shimmers, and the slider slides. There
+is nothing behind it yet: the phone comes first, the software is next.
 
 ## Running it locally
 
@@ -27,43 +19,28 @@ npx serve .            # or: python3 -m http.server 3000
 Then open <http://localhost:3000>. Opening `index.html` straight from the
 filesystem does not work because the site uses ES modules. WebGL is required.
 
-Deep links open an app after boot: `#notebook/builds`, `#terminal`, `#scope`.
+## What is modelled
 
-## Around the bench
-
-- **Click anywhere** to walk up, **click the screen** (or tap the phone, on mobile) to lean in, **Esc** or the tape in the corner to step back.
-- The **breaker panel** powers the bench. The **power switch** on the RK-1 really cuts the power; flip it again to boot.
-- The **light switch**, **ring lamp**, **cat**, **soldering iron**, **multimeter**, **oscilloscope**, **jars**, **stool**, **fire extinguisher**, and **phone** all react.
-- Typing while leaned in presses the keys on the bench keyboard. Music in the Jukebox drives the RK-1's LEDs and the oscilloscope.
-- The window shows the real time of day (always raining, though). Leave the computer alone for two minutes.
-- In the Terminal: `help`, `led morse`, `storm`, `meow`.
+Measurements are the real ones, in millimetres: a 115 x 61 x 11.6 mm body
+with 9 mm corners, a 3.5" 2:3 screen (320 x 480) set 15 mm below the top
+edge, a chrome bezel around black glass, a brushed aluminium back with the
+black plastic band across the bottom, and the details around the edge:
+earpiece, home button with its rounded-square icon, volume rocker, ring/silent
+switch, sleep button, headphone jack, SIM tray, 30-pin dock connector,
+speaker and microphone grilles, and the camera on the back.
 
 ## Project layout
 
 ```
-index.html             page shell (stage, OS root, HUD, breaker panel)
-css/                   tokens, gate/HUD, OS chrome, app styles, phone layout
-js/main.js             device detection (CRT vs phone), runs the gate
-js/boot.js             the breaker panel
-js/sound.js            Web Audio engine (UI, ambience, signal generator, chiptune player)
-js/songs.js            the three chiptune loops
-js/scene/              three.js workshop: world, screens (CSS3D + canvas), camera rig, HUD, effects
-js/os/                 RickyOS: window manager, phone layout, desktop, power strip, screensaver, apps/
-js/os/content.js       ALL placeholder text lives here
-vendor/three.min.js    three.js + OrbitControls + CSS3DRenderer, bundled
-assets/fonts/          Pixelify Sans, IBM Plex Sans/Mono, VT323 (OFL)
+index.html          the page: stage, two buttons, a hint
+css/style.css       the studio
+js/main.js          renderer, stand, lights, camera moves, pointer handling
+js/phone.js         the phone (geometry and materials), SPEC has the measurements
+js/lockscreen.js    the lock screen canvas: clock, planet, slide to unlock
+js/textures.js      canvas-drawn surfaces: brushed back, grilles, mesh, home icon
+vendor/three.min.js three.js + OrbitControls + RoomEnvironment, bundled
+scripts/            npm run vendor rebuilds the bundle
 ```
-
-## Making it yours
-
-Every word about "Ricky" is placeholder text: the jobs, the builds, the
-toaster. It all lives in `js/os/content.js`. Edit `PROFILE`, `ABOUT`, `WORK`,
-`BUILDS`, `CONTACT`, and `FILES` and the Notebook, Terminal, Notes, and
-Contact pages update automatically.
-
-- `js/os/apps/index.js` controls which apps appear.
-- `js/scene/world.js` is the room. Objects are grouped and commented.
-- `css/base.css` holds the colour tokens for the HUD and RickyOS.
 
 ## Updating three.js
 
@@ -80,7 +57,6 @@ the repository public, or on a plan that allows Pages on private repositories).
 
 ## Credits
 
-- Fonts: Pixelify Sans (Stefie Justprince), IBM Plex (IBM), VT323 (Peter Hull), all OFL.
 - three.js (MIT).
-- The idea of a portfolio you explore as a place owes a nod to the retro-OS
-  portfolios that came before it; everything here was built from scratch.
+- The phone it is modelled on was designed in Cupertino. Nothing here is
+  affiliated with or endorsed by Apple; the back carries an "R", not a fruit.

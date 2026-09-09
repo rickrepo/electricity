@@ -15,7 +15,7 @@ await build({
     contents: `
       export * from 'three';
       export { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-      export { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
+      export { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     `,
     resolveDir: new URL('..', import.meta.url).pathname,
   },
@@ -24,7 +24,7 @@ await build({
   format: 'esm',
   target: 'es2020',
   legalComments: 'none',
-  banner: { js: `/* three.js r${pkg.version} (MIT) - https://github.com/mrdoob/three.js - bundled with OrbitControls + CSS3DRenderer */` },
+  banner: { js: `/* three.js r${pkg.version} (MIT) - https://github.com/mrdoob/three.js - bundled with OrbitControls + RoomEnvironment */` },
   outfile: new URL('../vendor/three.min.js', import.meta.url).pathname,
 });
 
