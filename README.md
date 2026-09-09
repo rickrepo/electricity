@@ -34,7 +34,12 @@ and varnish, the fabrics have a weave, and the edges are rounded.
 
 ## Performance
 
-The room is built to run at whatever your display refreshes at. Nothing
+A loading screen covers the first second or two: the room is built, every
+shader is compiled, every texture and every mesh is sent to the GPU, and a
+frame is drawn from each place the camera can go (the room, the desk, the
+phone in hand, the decks, behind the buggy) before the room fades in, so
+nothing is built on first sight and the first walk-in is as smooth as the
+last. The room is built to run at whatever your display refreshes at. Nothing
 that casts a shadow ever moves, so the two shadow maps are rendered at the
 start and then frozen. Everything static is merged into one mesh per
 material at load, which brings the scene from about 350 draw calls a frame

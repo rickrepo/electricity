@@ -35,7 +35,13 @@ body.ready #stage canvas { opacity: 1; }
 body.in-hand #stage::before { opacity: 0; }
 body.in-hand #stage::after { opacity: 0.35; }
 
-
+/* the loading screen: the room, its shaders, and its textures are all built
+   and sent to the GPU behind it, so nothing stutters once it lifts */
+#loading { position: fixed; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 22px; background: var(--bg-edge); transition: opacity 0.7s ease; }
+#loading .mark { font: 300 46px/1 var(--font); color: var(--ink); opacity: 0.92; }
+#loading .bar { width: 140px; height: 2px; border-radius: 1px; overflow: hidden; background: rgba(237, 231, 222, 0.14); }
+#loading .bar i { display: block; height: 100%; width: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease; }
+#loading.done { opacity: 0; pointer-events: none; }
 
 .fail { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: var(--bg); text-align: center; font-size: 16px; line-height: 1.5; }
 .fail[hidden] { display: none; }

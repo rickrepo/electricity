@@ -12,7 +12,7 @@ import { createRoom, DESK } from './room.js';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
-const ui = { fail: $('fail') };
+const ui = { fail: $('fail'), loading: $('loading') };
 const coarse = matchMedia('(pointer: coarse)').matches;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
@@ -41,8 +41,15 @@ function hasWebGL() {
   try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
 }
 
-function main() {
-  if (!hasWebGL()) { ui.fail.hidden = false; return; }
+// The loading screen shows progress while the room is built and everything
+// the GPU will need is sent ahead: a paint between phases keeps it moving.
+const progress = (p) => { const bar = ui.loading?.querySelector('i'); if (bar) bar.style.transform = `scaleX(${p})`; };
+const breathe = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+
+async function main() {
+  if (!hasWebGL()) { ui.fail.hidden = false; ui.loading?.remove(); return; }
+  progress(0.04);
+  await breathe();
 
   /* ---------- renderer, scene ---------- */
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
@@ -74,7 +81,11 @@ function main() {
   const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 20, 20000);
 
   /* ---------- the room and the phone on the desk ---------- */
+  progress(0.1);
+  await breathe();
   const room = createRoom({ scene });
+  progress(0.5);
+  await breathe();
   const rig = new THREE.Group();
   const TILT = 0.314;
   rig.position.set(room.phoneSpot.x, room.phoneSpot.y + 6.05, room.phoneSpot.z + 9);
@@ -388,13 +399,6 @@ function main() {
     if (state === 'up') { const p = handPose(); camera.position.copy(p.pos); look.copy(p.target); camera.up.copy(p.up); camera.lookAt(look); }
   });
 
-  /* ---------- walking in ---------- */
-  look.copy(POSES.room.target);
-  camera.position.copy(posePosition(POSES.room, 0.05, 1.22)).add(new THREE.Vector3(120, 40, 200));
-  camera.lookAt(look);
-  setHint('');
-  flyTo({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP.clone() }, 3200, () => { settle('room'); controls.autoRotate = !reduced; });
-
   /* ---------- frame pacing ---------- */
   // Rendering starts at full resolution. If the display's refresh rate is
   // missed in two windows in a row, the resolution steps down a notch and the
@@ -425,7 +429,7 @@ function main() {
   const screenWorld = new THREE.Vector3();
   let first = true;
   let lastFrame = performance.now();
-  const started = performance.now();
+  let started = performance.now();
   let shadowFrames = 2, lateShadow = false;
   // ?fps in the address bar shows frame rate, draw calls, and resolution in the corner
   let fpsBox = null, fpsFrames = 0, fpsSince = performance.now();
@@ -490,9 +494,57 @@ function main() {
     }
     if (first) { first = false; document.body.classList.add('ready'); setTimeout(() => os.boot(), reduced ? 200 : 1600); }
   };
+
+  /* ---------- loading: everything the GPU will need, before the room appears ---------- */
+  os.warm();
+  progress(0.58);
+  await breathe();
+  // every shader in the scene, compiled in parallel where the browser allows
+  if (renderer.compileAsync && renderer.extensions.has('KHR_parallel_shader_compile')) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera);
+  progress(0.76);
+  await breathe();
+  // every texture, uploaded now rather than on first sight
+  scene.traverse((o) => {
+    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+      for (const key of ['map', 'bumpMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'normalMap', 'alphaMap']) if (m[key]?.isTexture) renderer.initTexture(m[key]);
+    }
+  });
+  progress(0.84);
+  await breathe();
+  // one frame from each place the camera goes: geometry lands on the GPU and the
+  // shadow maps are drawn here, not on the first visit
+  const views = [
+    () => ({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP }),
+    () => ({ pos: posePosition(POSES.desk), target: POSES.desk.target, up: WORLD_UP }),
+    () => handPose(),
+    () => ({ pos: posePosition(POSES.decks), target: POSES.decks.target.clone(), up: WORLD_UP }),
+    () => ({ ...chasePose(), up: WORLD_UP }),
+  ];
+  for (let i = 0; i < views.length; i++) {
+    const v = views[i]();
+    camera.up.copy(v.up);
+    camera.position.copy(v.pos);
+    camera.lookAt(v.target);
+    renderer.render(scene, camera);
+    progress(0.84 + (0.14 * (i + 1)) / views.length);
+    await breathe();
+  }
+  // the poster's photo gets a moment to land, so its shadow is right from the start
+  for (const t0 = performance.now(); !room.shadowsDirty && performance.now() - t0 < 800;) await breathe();
+  progress(1);
+  camera.up.copy(WORLD_UP);
+
+  /* ---------- walking in ---------- */
+  look.copy(POSES.room.target);
+  camera.position.copy(posePosition(POSES.room, 0.05, 1.22)).add(new THREE.Vector3(120, 40, 200));
+  camera.lookAt(look);
+  flyTo({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP.clone() }, 3200, () => { settle('room'); controls.autoRotate = !reduced; });
+  started = lastFrame = fpsSince = performance.now();
+  ui.loading?.classList.add('done');
+  setTimeout(() => ui.loading?.remove(), 900);
   tick();
 
   window.ricky = { scene, camera, controls, renderer, phone, os, room, pickUp, putDown, walkUp, stepBack, goDecks, drive, park, pressButton, get state() { return state; } };
 }
 
-try { main(); } catch (err) { console.error(err); ui.fail.hidden = false; ui.fail.querySelector('p').textContent = `Something went wrong while drawing the room: ${err.message || err}`; }
+main().catch((err) => { console.error(err); ui.loading?.remove(); ui.fail.hidden = false; ui.fail.querySelector('p').textContent = `Something went wrong while drawing the room: ${err.message || err}`; });

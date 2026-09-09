@@ -507,6 +507,13 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       return true;
     },
     get scale() { return S; },
+    // draws what the first screens need ahead of time, so nothing is built on first sight
+    warm() {
+      atlas = renderAtlas(ALL, Date.now(), S);
+      atlasMinute = Math.floor(Date.now() / 60000);
+      renderHome();
+      if (!layer) { layer = document.createElement('canvas'); layer.width = W * S; layer.height = H * S; }
+    },
     boot(now = performance.now()) { if (st.mode === 'off') setMode('boot', now); },
     wake(now = performance.now()) { if (st.mode === 'off') setMode('waking', now); },
     sleep(now = performance.now()) {
