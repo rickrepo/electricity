@@ -24,7 +24,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   const canvas = document.createElement('canvas');
   canvas.width = W * S;
   canvas.height = H * S;
-  const ctx = canvas.getContext('2d');
+  let ctx = canvas.getContext('2d');
+  let layer = null; // an app drawn on its own, for the zoom in and out of its icon
   const measure = document.createElement('canvas').getContext('2d');
   const wallpapers = { earth: earthWallpaper(), ripples: rippleWallpaper() };
   const settings = { wallpaper: 'earth', brightness: 1, airplane: false };
@@ -251,9 +252,9 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   const scrollArea = (app) => H - CONTENT_Y - (app.inset || 0);
   const maxScroll = (app, s) => Math.max(0, (app.height ? app.height(s, os) : 0) - scrollArea(app));
 
-  function drawApp(now, app) {
+  function drawApp(now, app, withStatus = true) {
     const s = appState(app);
-    if (app.fixed) { app.draw(ctx, s, os, now); statusBar(); return; }
+    if (app.fixed) { app.draw(ctx, s, os, now); if (withStatus) statusBar(); return; }
     if (ptr.mode !== 'content' && Math.abs(s.vel) > 0.05) {
       const max = maxScroll(app, s);
       s.scroll = clamp(s.scroll + s.vel, 0, max);
@@ -274,17 +275,41 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     const bar = app.bar ? app.bar(s, os) : { title: app.name };
     s.barHits = navBar(ctx, bar.title, { back: bar.back, right: bar.right });
     app.overlay?.(ctx, s, os, now);
-    statusBar();
+    if (withStatus) statusBar();
   }
 
-  function drawAppScaled(now, app, rect, k, alpha) {
-    const cx = rect.x + ICON / 2, cy = rect.y + ICON / 2;
+  // The app is drawn on its own layer, then squeezed between the full screen
+  // (k = 1) and its icon (k = 0) behind a clip whose corners round off as it
+  // shrinks. The status bar stays put on top; the home screen behind zooms.
+  function drawAppZoom(now, app, rect, k, alpha) {
+    if (!layer) { layer = document.createElement('canvas'); }
+    if (layer.width !== W * S) { layer.width = W * S; layer.height = H * S; }
+    const main = ctx;
+    ctx = layer.getContext('2d');
+    ctx.setTransform(S, 0, 0, S, 0, 0);
+    ctx.globalAlpha = 1;
+    drawApp(now, app, false);
+    ctx = main;
+    const x = rect.x * (1 - k), y = rect.y * (1 - k);
+    const w = ICON + (W - ICON) * k, h = ICON + (H - ICON) * k;
     ctx.save();
     ctx.globalAlpha = alpha;
+    roundRect(ctx, x, y, w, h, 10 * (1 - k));
+    ctx.clip();
+    ctx.drawImage(layer, 0, 0, W * S, H * S, x, y, w, h);
+    ctx.restore();
+  }
+  // the home screen zooming in or out around the icon that opened
+  function drawHomeZoom(rect, k) {
+    const cx = rect.x + ICON / 2, cy = rect.y + ICON / 2;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = 1 - k;
     ctx.translate(cx, cy);
-    ctx.scale(k, k);
+    ctx.scale(1 + 0.35 * k, 1 + 0.35 * k);
     ctx.translate(-cx, -cy);
-    drawApp(now, app);
+    drawHome();
     ctx.restore();
   }
 
@@ -324,9 +349,10 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         drawHome();
         break;
       case 'opening': {
-        drawHome();
-        const k = easeInOut(clamp(t / 320, 0, 1));
-        drawAppScaled(now, st.app, st.appRect, 0.2 + 0.8 * k, k);
+        const k = easeOut(clamp(t / 340, 0, 1));
+        drawHomeZoom(st.appRect, k);
+        drawAppZoom(now, st.app, st.appRect, k, clamp(k / 0.25, 0, 1));
+        statusBar();
         if (k >= 1) setMode('app', now);
         break;
       }
@@ -334,9 +360,10 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         drawApp(now, st.app);
         break;
       case 'closing': {
-        drawHome();
-        const k = 1 - easeInOut(clamp(t / 260, 0, 1));
-        drawAppScaled(now, st.app, st.appRect, 0.2 + 0.8 * k, k);
+        const k = 1 - easeInOut(clamp(t / 300, 0, 1));
+        drawHomeZoom(st.appRect, k);
+        drawAppZoom(now, st.app, st.appRect, k, clamp(k / 0.3, 0, 1));
+        statusBar();
         if (k <= 0) { st.app = null; setMode('home', now); }
         break;
       }
@@ -475,6 +502,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       canvas.width = W * S;
       canvas.height = H * S;
       atlas = null;
+      layer = null;
       st.dirty = true;
       return true;
     },

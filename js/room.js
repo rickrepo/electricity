@@ -1,8 +1,10 @@
 // The room: a den for someone born in 1989, at dusk, in millimetres.
 // A desk against the back wall with the phone on it and the poster above,
-// a bed, two direct-drive turntables and a mixer with a crate of records,
-// a CRT running a racing game with the N64 under it, a nitro buggy on the
-// rug and another on the shelf, curtains, a chair, a clock, a door.
+// a bed, two direct-drive turntables and a mixer with two crates of records
+// (pull one out and drop it on a deck), a CRT running a racing game with the
+// N64 under it, a nitro buggy on the rug with its transmitter beside it (pick
+// the transmitter up and drive), another buggy on the shelf, curtains, a
+// chair, a clock, a door, and an architect's lamp on the desk.
 // Boxes, cylinders, and canvas-drawn textures; the light does the rest.
 import * as THREE from '../vendor/three.min.js';
 import { RoundedBoxGeometry, RectAreaLightUniformsLib, mergeGeometries } from '../vendor/three.min.js';
@@ -193,6 +195,37 @@ function strobeTexture() {
   return c;
 }
 
+// Twelve record sleeves in one sheet, plus a cream cell for their edges.
+function coverAtlas() {
+  const c = canvas(1024, 1024), ctx = c.getContext('2d');
+  const P = [['#e63b2e', '#f6c445'], ['#1f3a93', '#e8e2d3'], ['#141414', '#f2f2f2'], ['#3aa64a', '#0f2a1a'], ['#f28c28', '#2b1d0e'], ['#7b3fa0', '#f7d6ff'], ['#0e7c86', '#ffe66d'], ['#f5e6c8', '#c0392b'], ['#2c3e50', '#e67e22'], ['#d4a017', '#1b1b1b'], ['#e84393', '#2d1b3a'], ['#8d6e63', '#f1e0c5']];
+  P.forEach(([a, b], i) => {
+    const x = (i % 4) * 256, y = Math.floor(i / 4) * 256;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath(); ctx.rect(0, 0, 256, 256); ctx.clip();
+    ctx.fillStyle = a;
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = b;
+    switch (i % 6) {
+      case 0: ctx.beginPath(); ctx.arc(128, 128, 88, 0, Math.PI * 2); ctx.fill(); break;
+      case 1: ctx.beginPath(); ctx.moveTo(0, 190); ctx.lineTo(256, 40); ctx.lineTo(256, 120); ctx.lineTo(0, 256); ctx.fill(); break;
+      case 2: for (let k = 0; k < 5; k++) ctx.fillRect(0, 24 + k * 48, 256, 20); break;
+      case 3: for (let r = 0; r < 4; r++) for (let q = 0; q < 4; q++) if ((r + q) % 2) ctx.fillRect(q * 64, r * 64, 64, 64); break;
+      case 4: for (let k = 4; k >= 1; k--) { ctx.fillStyle = k % 2 ? b : a; ctx.beginPath(); ctx.arc(128, 128, k * 28, 0, Math.PI * 2); ctx.fill(); } break;
+      case 5: ctx.fillRect(40, 40, 140, 140); ctx.fillStyle = a; ctx.fillRect(70, 70, 80, 80); break;
+    }
+    ctx.fillStyle = b; ctx.fillRect(200, 200, 40, 40);
+    ctx.fillStyle = a; ctx.fillRect(208, 208, 24, 24);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(0, 0, 256, 5); ctx.fillRect(0, 0, 5, 256);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(0, 251, 256, 5); ctx.fillRect(251, 0, 5, 256);
+    ctx.restore();
+  });
+  ctx.fillStyle = '#e9e2d2';
+  ctx.fillRect(768, 768, 256, 256);
+  return { canvas: c, labels: P.map(([, b]) => b) };
+}
+
 // A soft dark blob to sit under furniture: cheap contact shadow.
 function blobTexture() {
   const c = canvas(256, 256), ctx = c.getContext('2d');
@@ -273,6 +306,29 @@ export function createRoom({ scene }) {
   const box = (w, h, d, mat, o = {}) => place(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat), o);
   const rbox = (w, h, d, r, mat, o = {}) => place(new THREE.Mesh(new THREE.RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2)), mat), o);
   const cyl = (r, h, mat, o = {}) => place(new THREE.Mesh(new THREE.CylinderGeometry(o.rt ?? r, r, h, o.seg || 32), mat), o);
+  // Bakes a list of meshes into one mesh per material in `parent`'s own frame:
+  // the parent can still move as a whole, and it takes one draw call per material.
+  const bakeInto = (parent, parts, { cast = true, receive = true } = {}) => {
+    parent.updateWorldMatrix(true, true);
+    const inv = parent.matrixWorld.clone().invert();
+    const byMat = new Map();
+    for (const m of parts) {
+      let g = m.geometry.clone().applyMatrix4(inv.clone().multiply(m.matrixWorld));
+      if (g.index) g = g.toNonIndexed();
+      for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+      (byMat.get(m.material) || byMat.set(m.material, []).get(m.material)).push(g);
+    }
+    for (const m of parts) { m.parent.remove(m); m.geometry.dispose(); }
+    const out = [];
+    for (const [mat, gs] of byMat) {
+      const mesh = new THREE.Mesh(mergeGeometries(gs, false), mat);
+      mesh.castShadow = cast;
+      mesh.receiveShadow = receive;
+      parent.add(mesh);
+      out.push(mesh);
+    }
+    return out;
+  };
   const shadowBlob = (w, d, x, y, z, ry = 0) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), blob);
     m.rotation.set(-Math.PI / 2, 0, ry);
@@ -367,22 +423,67 @@ export function createRoom({ scene }) {
   rbox(400, 500, 600, 8, mats.darkWood, { x: DESK.x + 480, y: 250, z: DESK.z + 20 });
   for (let i = 0; i < 2; i++) rbox(90, 16, 22, 6, mats.silver, { x: DESK.x + 480, y: 130 + i * 240, z: DESK.z + 330 });
   shadowBlob(1700, 1000, DESK.x, 0, DESK.z + 60);
-  // desk lamp, the key light of the room
-  cyl(82, 24, mats.black, { x: -520, y: DESK.top + 12, z: DESK.z - 200 });
-  const arm1 = cyl(9, 380, mats.black, { x: -520, y: DESK.top + 22 + 180, z: DESK.z - 140, rx: 0.35 });
-  cyl(9, 300, mats.black, { x: -520, y: DESK.top + 380, z: DESK.z - 40, rx: 1.1 });
-  cyl(14, 30, mats.black, { x: -520, y: DESK.top + 395, z: DESK.z - 60 });
-  const shade = new THREE.Mesh(new THREE.ConeGeometry(110, 150, 40, 1, true), new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.55, metalness: 0.2, side: THREE.DoubleSide }));
-  shade.position.set(-520, DESK.top + 330, DESK.z + 70);
-  shade.rotation.x = 2.6;
+  // desk lamp, the key light of the room: an architect's lamp with its springs,
+  // a bell shade lit from inside, and a cord down to the wall
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.45, metalness: 0.35 });
+  const LX = -520, LY = DESK.top, LZ = DESK.z - 200;
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  cyl(84, 10, lampMat, { x: LX, y: LY + 5, z: LZ, rt: 80, seg: 48 });
+  cyl(80, 14, lampMat, { x: LX, y: LY + 17, z: LZ, rt: 58, seg: 48 });
+  rbox(24, 8, 14, 2, mats.red, { x: LX + 44, y: LY + 26, z: LZ + 34, cast: false });
+  cyl(18, 36, lampMat, { x: LX, y: LY + 42, z: LZ, seg: 24 });
+  const rod = (a, b, r, mat = lampMat) => {
+    const d = b.clone().sub(a);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 12), mat);
+    m.position.copy(a).addScaledVector(d, 0.5);
+    m.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize());
+    m.castShadow = true;
+    group.add(m);
+    return m;
+  };
+  const hinge = (p, len = 44) => {
+    rod(p.clone().add(V(-len / 2, 0, 0)), p.clone().add(V(len / 2, 0, 0)), 12);
+    for (const sx of [-1, 1]) rod(p.clone().add(V((sx * len) / 2, 0, 0)), p.clone().add(V(sx * (len / 2 + 7), 0, 0)), 9, mats.silver);
+  };
+  const spring = (a, b, r = 8, turns = 14) => {
+    const d = b.clone().sub(a), len = d.length(), n = d.clone().normalize();
+    const u = Math.abs(n.x) > 0.9 ? V(0, 0, 1) : V(1, 0, 0);
+    const v1 = new THREE.Vector3().crossVectors(n, u).normalize(), v2 = new THREE.Vector3().crossVectors(n, v1);
+    const pts = [], N = turns * 10;
+    for (let i = 0; i <= N; i++) { const t = i / N, ang = t * turns * Math.PI * 2; pts.push(a.clone().addScaledVector(n, t * len).addScaledVector(v1, Math.cos(ang) * r).addScaledVector(v2, Math.sin(ang) * r)); }
+    const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), N * 2, 1.5, 6, false), mats.silver);
+    group.add(m);
+    return m;
+  };
+  const knee = V(LX, LY + 62 + 370 * Math.cos(0.2), LZ - 370 * Math.sin(0.2));
+  const head = V(LX, LY + 330, LZ + 220);
+  hinge(V(LX, LY + 62, LZ));
+  for (const sx of [-1, 1]) {
+    rod(V(LX + sx * 14, LY + 62, LZ), knee.clone().add(V(sx * 14, 0, 0)), 5);
+    rod(knee.clone().add(V(sx * 14, 0, 0)), head.clone().add(V(sx * 14, 0, 0)), 5);
+  }
+  hinge(knee);
+  hinge(head, 40);
+  spring(V(LX, LY + 74, LZ + 46), V(LX, LY + 62 + 300 * Math.cos(0.2), LZ - 300 * Math.sin(0.2) + 14));
+  spring(V(LX, LY + 62 + 330 * Math.cos(0.2) - 8, LZ - 330 * Math.sin(0.2) + 22), knee.clone().lerp(head, 0.55).add(V(0, 14, 0)));
+  const dir = V(-150, LY, LZ + 520).sub(head).normalize();
+  const profile = [[22, 10], [22, 0], [34, -12], [58, -34], [82, -66], [100, -105], [108, -140], [106, -152]].map(([r, y]) => new THREE.Vector2(r, y));
+  const shade = new THREE.Mesh(new THREE.LatheGeometry(profile, 48), new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide }));
+  shade.position.copy(head);
+  shade.quaternion.setFromUnitVectors(V(0, -1, 0), dir);
   shade.castShadow = true;
   group.add(shade);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(30, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff3d2 }));
-  bulb.position.set(-520, DESK.top + 300, DESK.z + 110);
+  const inner = new THREE.Mesh(new THREE.LatheGeometry(profile.map((q) => new THREE.Vector2(q.x * 0.95, q.y + 3)), 48), new THREE.MeshStandardMaterial({ color: 0xf1dfc6, emissive: 0xffb877, emissiveIntensity: 0.55, roughness: 0.6, side: THREE.DoubleSide }));
+  inner.position.copy(head);
+  inner.quaternion.copy(shade.quaternion);
+  group.add(inner);
+  rod(head.clone().addScaledVector(dir, 6), head.clone().addScaledVector(dir, 66), 7);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(24, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff1d0 }));
+  bulb.position.copy(head).addScaledVector(dir, 92);
   group.add(bulb);
-  const lamp = new THREE.SpotLight(0xffd6a0, 6, 2600, 0.78, 0.55, 0);
+  const lamp = new THREE.SpotLight(0xffd6a0, 6, 2600, 0.72, 0.6, 0);
   lamp.position.copy(bulb.position);
-  lamp.target.position.set(-150, DESK.top, DESK.z + 300);
+  lamp.target.position.copy(bulb.position).addScaledVector(dir, 800);
   lamp.castShadow = true;
   lamp.shadow.mapSize.set(1024, 1024);
   lamp.shadow.camera.near = 60;
@@ -391,6 +492,8 @@ export function createRoom({ scene }) {
   lamp.shadow.normalBias = 2;
   lamp.shadow.radius = 5;
   group.add(lamp, lamp.target);
+  group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(LX, LY + 6, LZ - 70), V(LX + 10, LY - 20, LZ - 130), V(LX + 30, 420, -994), V(LX + 60, 40, -994), V(LX + 320, 22, -994), V(LX + 330, 240, -994)]), 48, 3.2, 6, false), mats.black));
+  rbox(70, 110, 8, 2, mats.trim, { x: LX + 330, y: 300, z: -996, cast: false });
   // things on the desk
   for (let i = 0; i < 5; i++) rbox(142, 10, 125, 2, i % 2 ? mats.black : mats.trim, { x: 420, y: DESK.top + 5 + i * 10, z: DESK.z - 180, ry: (i - 2) * 0.08 });
   cyl(40, 95, mats.trim, { x: 300, y: DESK.top + 47, z: DESK.z + 80 });
@@ -478,7 +581,8 @@ export function createRoom({ scene }) {
     place(new THREE.Mesh(new THREE.CylinderGeometry(166, 166, 14, 96), [rim, alu, alu]), { y: 7, parent: platter, cast: false });
     cyl(160, 3, rubber, { y: 15.5, parent: platter, cast: false, seg: 96 });
     cyl(150, 2, vinyl, { y: 18, parent: platter, cast: false, seg: 96 });
-    cyl(50, 0.6, mats.red, { y: 19.3, parent: platter, cast: false, seg: 48 });
+    const label = new THREE.MeshStandardMaterial({ color: 0xc8362b, roughness: 0.6 });
+    cyl(50, 0.6, label, { y: 19.3, parent: platter, cast: false, seg: 48 });
     cyl(3.6, 12, mats.silver, { y: 23, parent: platter, cast: false, seg: 16 });
     platter.rotation.y = angle;
     // the tonearm: pivot at the back right, an S-shaped arm, the counterweight behind it
@@ -524,7 +628,7 @@ export function createRoom({ scene }) {
     cyl(13, 5, mats.black, { x: -190, y: 82.5, z: -140, parent: g, cast: false, seg: 24 });
     cyl(6, 9, alu, { x: -190, y: 88, z: -140, parent: g, cast: false, seg: 16 });
     for (const x of [-150, 150]) box(24, 10, 8, mats.black, { x, y: 85, z: -172, parent: g, cast: false });
-    return { group: g, platter, lamp, playing: false, meshes: [] };
+    return { group: g, platter, lamp, label, record: null, playing: false, meshes: [] };
   };
   const deckA = makeDeck(djZ - 420, 0.3, true), deckB = makeDeck(djZ + 420, 2.1, false);
   for (const d of [deckA, deckB]) {
@@ -558,23 +662,138 @@ export function createRoom({ scene }) {
   rbox(14, 6, 20, 2, mats.black, { x: 6, y: 74, z: 142, parent: mixer, cast: false });
   for (const x of [-9, 9]) for (let j = 0; j < 8; j++) box(5, 0.8, 4, leds[j < 5 ? 0 : j < 7 ? 1 : 2], { x, y: 71.6, z: -30 - j * 11, parent: mixer, cast: false });
   for (const x of [-18, 0, 18]) cyl(6, 7, knob, { x, y: 74, z: 90, parent: mixer, cast: false, seg: 16 });
-  rbox(330, 280, 330, 6, mats.crate, { x: djX + 60, y: 140, z: djZ + 200 });
-  for (let i = 0; i < 9; i++) box(4, 310, 310, new THREE.MeshStandardMaterial({ color: [0x1a1a1c, 0xd94a2b, 0xf5e6c8, 0x2f6fd0, 0x3aa64a][i % 5], roughness: 0.8 }), { x: djX + 60 - 110 + i * 26, y: 300, z: djZ + 200, rz: 0.12 });
+
+  /* two crates of records in front of the stand; two more records are out on the decks */
+  const covers = coverAtlas();
+  const coverTex = tex(covers.canvas);
+  coverTex.wrapS = coverTex.wrapT = THREE.ClampToEdgeWrapping;
+  const sleeveMat = new THREE.MeshStandardMaterial({ map: coverTex, roughness: 0.78 });
+  const records = [], crates = [];
+  const sleeveGeometry = (i) => {
+    const g = new THREE.BoxGeometry(4, 310, 310);
+    const uv = g.attributes.uv, pos = g.attributes.position;
+    const cx = (i % 4) / 4, cy = 1 - (Math.floor(i / 4) + 1) / 4;
+    for (let v = 0; v < uv.count; v++) {
+      const face = Math.floor(v / 4);
+      if (face < 2) uv.setXY(v, cx + (0.5 - (face ? -1 : 1) * (pos.getZ(v) / 310)) * 0.25, cy + (0.5 + pos.getY(v) / 310) * 0.25);
+      else uv.setXY(v, 0.875, 0.125);
+    }
+    return g;
+  };
+  const makeCrate = (x, z, ry) => {
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    g.rotation.y = ry;
+    group.add(g);
+    const parts = [box(330, 16, 330, mats.crate, { y: 8, parent: g })];
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push(box(16, 280, 16, mats.crate, { x: sx * 157, y: 140, z: sz * 157, parent: g }));
+    for (const y of [70, 150, 230]) {
+      for (const sz of [-1, 1]) parts.push(box(330, 12, 8, mats.crate, { y, z: sz * 161, parent: g }));
+      for (const sx of [-1, 1]) parts.push(box(8, 12, 330, mats.crate, { x: sx * 161, y, parent: g }));
+    }
+    for (const sz of [-1, 1]) parts.push(box(330, 14, 12, mats.crate, { y: 276, z: sz * 159, parent: g }));
+    for (const sx of [-1, 1]) parts.push(box(12, 14, 330, mats.crate, { x: sx * 159, y: 276, parent: g }));
+    const [mesh] = bakeInto(g, parts);
+    // a solid, unseen box so a click between the rails still counts as the crate
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(330, 300, 330), new THREE.MeshBasicMaterial({ visible: false }));
+    hit.position.y = 150;
+    g.add(hit);
+    shadowBlob(520, 520, x, 0, z, ry);
+    return { group: g, mesh, hit, x, z };
+  };
+  crates.push(makeCrate(-1150, 20, 0.12), makeCrate(-1150, 350, -0.08));
+  // records stand in six slots per crate, each leaning a little more than the one behind it
+  const slotPose = (crate, j) => {
+    const p = new THREE.Vector3(-105 + j * 34, 178, 0);
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -(0.05 + j * 0.05)));
+    crate.group.localToWorld(p);
+    q.premultiply(crate.group.quaternion);
+    return { p, q };
+  };
+  // a record that is out on a deck leaves its sleeve leaning on the wall behind the deck
+  const asidePose = (deck) => ({ p: new THREE.Vector3(-ROOM.halfW + 38, 903, deck.group.position.z), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0.2)) });
+  for (let i = 0; i < 12; i++) {
+    const mesh = new THREE.Mesh(sleeveGeometry(i), sleeveMat);
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+    const home = { crate: Math.floor(i / 6), slot: i % 6 };
+    const rec = { id: i, mesh, label: covers.labels[i], home, where: 'crate' };
+    const pose = slotPose(crates[home.crate], home.slot);
+    mesh.position.copy(pose.p);
+    mesh.quaternion.copy(pose.q);
+    records.push(rec);
+  }
+  for (const [deck, rec] of [[deckA, records[5]], [deckB, records[11]]]) {
+    deck.record = rec;
+    rec.where = 'deck';
+    deck.label.color.set(rec.label);
+    const pose = asidePose(deck);
+    rec.mesh.position.copy(pose.p);
+    rec.mesh.quaternion.copy(pose.q);
+  }
+  const tweens = [];
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+  const tween = (obj, to, dur, lift = 0, onDone = null) => {
+    for (let i = tweens.length - 1; i >= 0; i--) if (tweens[i].obj === obj) tweens.splice(i, 1);
+    tweens.push({ obj, from: { p: obj.position.clone(), q: obj.quaternion.clone() }, to, t: 0, dur, lift, onDone });
+  };
+  const setPlaying = (deck, on) => { deck.playing = on; deck.lamp.material.emissiveIntensity = on ? 1.4 : 0; };
+  let held = null;
+  // pull a record out of its crate: it rises and turns to face `from` (the camera)
+  const takeRecord = (rec, from) => {
+    if (held || rec.where !== 'crate') return false;
+    held = rec;
+    rec.where = 'hand';
+    const crate = crates[rec.home.crate];
+    const p = new THREE.Vector3(crate.x + 160, 600, crate.z);
+    const yaw = Math.atan2(-(from.z - p.z), from.x - p.x);
+    tween(rec.mesh, { p, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)) }, 520, 120);
+    return true;
+  };
+  const returnRecord = () => {
+    if (!held) return false;
+    const rec = held;
+    held = null;
+    rec.where = 'crate';
+    tween(rec.mesh, slotPose(crates[rec.home.crate], rec.home.slot), 480, 90);
+    return true;
+  };
+  // drop the held record on a deck: its sleeve goes to the wall, the old one back to its crate
+  const placeRecord = (deck) => {
+    if (!held) return false;
+    const rec = held;
+    held = null;
+    rec.where = 'deck';
+    const old = deck.record;
+    deck.record = rec;
+    setPlaying(deck, false);
+    tween(rec.mesh, asidePose(deck), 720, 260, () => deck.label.color.set(rec.label));
+    if (old) { old.where = 'crate'; tween(old.mesh, slotPose(crates[old.home.crate], old.home.slot), 720, 200); }
+    return true;
+  };
   rbox(240, 30, 900, 4, mats.desk, { x: -ROOM.halfW + 120, y: 1650, z: djZ });
   for (const dz of [-380, 380]) box(20, 200, 20, mats.black, { x: -ROOM.halfW + 40, y: 1540, z: djZ + dz, cast: false });
   cyl(45, 200, mats.trim, { x: -ROOM.halfW + 120, y: 1765, z: djZ + 320 });
   cyl(24, 40, mats.red, { x: -ROOM.halfW + 120, y: 1885, z: djZ + 320 });
 
-  /* buggies */
-  const makeBuggy = (bodyMat, { x, y, z, ry }) => {
+  /* buggies: the one on the rug drives, with its transmitter lying beside it */
+  const makeBuggy = (bodyMat, { x, y, z, ry, live = false }) => {
     const g = new THREE.Group();
     g.position.set(x, y, z);
     g.rotation.y = ry;
     group.add(g);
+    const wheels = [];
     rbox(300, 12, 130, 4, mats.charcoal, { y: 45, parent: g });
     for (const [wx, wz] of [[-110, 85], [-110, -85], [118, 85], [118, -85]]) {
-      cyl(42, 40, mats.black, { x: wx, y: 42, z: wz, rx: Math.PI / 2, parent: g });
-      cyl(20, 42, mats.silver, { x: wx, y: 42, z: wz, rx: Math.PI / 2, parent: g, cast: false });
+      const pivot = new THREE.Group();
+      pivot.position.set(wx, 42, wz);
+      g.add(pivot);
+      const wheel = new THREE.Group();
+      pivot.add(wheel);
+      cyl(42, 40, mats.black, { rx: Math.PI / 2, parent: wheel, seg: 24 });
+      cyl(20, 42, mats.silver, { rx: Math.PI / 2, parent: wheel, cast: false, seg: 16 });
+      wheels.push({ pivot, wheel, front: wx > 0 });
     }
     rbox(150, 52, 132, 16, bodyMat, { x: -30, y: 84, parent: g });
     rbox(130, 30, 122, 12, bodyMat, { x: 105, y: 72, parent: g });
@@ -584,11 +803,68 @@ export function createRoom({ scene }) {
     cyl(14, 120, mats.silver, { x: -70, y: 62, z: 82, rz: Math.PI / 2, parent: g });
     cyl(1.5, 220, mats.black, { x: 40, y: 220, z: -40, parent: g, cast: false });
     rbox(40, 44, 40, 4, mats.grey, { x: 20, y: 130, z: 30, parent: g });
-    return g;
+    if (!live) return { group: g };
+    // the body bakes into a few meshes in the car's own frame; the wheels stay free to spin and steer
+    const parts = [];
+    g.traverse((m) => { if (m.isMesh && !wheels.some((w) => w.pivot.getObjectById(m.id))) parts.push(m); });
+    const meshes = bakeInto(g, parts, { cast: false });
+    for (const w of wheels) w.wheel.traverse((m) => { if (m.isMesh) { m.castShadow = false; meshes.push(m); } });
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(460, 300), blob);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 1.5;
+    g.add(shadow);
+      return { group: g, meshes, wheels, yaw: ry, v: 0, steer: 0, throttle: 0, steerIn: 0, driving: false, x, z, input(t, st) { this.throttle = t; this.steerIn = st; } };
   };
-  makeBuggy(mats.red, { x: 700, y: 0, z: 1050, ry: -0.7 });
-  shadowBlob(460, 300, 700, 3, 1050, -0.7);
+  const car = makeBuggy(mats.red, { x: -350, y: 0, z: 520, ry: -0.55, live: true });
   makeBuggy(mats.blue, { x: -ROOM.halfW + 120, y: 1665, z: djZ - 200, ry: Math.PI / 2 });
+  // the transmitter: two sticks, a few trims, a long antenna
+  const remote = new THREE.Group();
+  remote.position.set(-640, 0, 380);
+  remote.rotation.y = -0.8;
+  group.add(remote);
+  {
+    const parts = [rbox(170, 42, 200, 8, mats.charcoal, { y: 21, parent: remote }), box(150, 2, 60, plate, { y: 42.5, z: -55, parent: remote, cast: false })];
+    for (const sx of [-1, 1]) {
+      parts.push(cyl(9, 3, mats.black, { x: sx * 50, y: 43.5, z: 30, parent: remote, cast: false, seg: 20 }));
+      parts.push(cyl(3, 40, mats.silver, { x: sx * 50, y: 62, z: 30, parent: remote, cast: false, seg: 10 }));
+      parts.push(place(new THREE.Mesh(new THREE.SphereGeometry(7, 14, 10), mats.black), { x: sx * 50, y: 84, z: 30, parent: remote }));
+    }
+    for (let i = 0; i < 3; i++) parts.push(cyl(6, 6, knob, { x: -55 + i * 55, y: 44, z: 75, parent: remote, cast: false, seg: 14 }));
+    parts.push(cyl(3, 420, mats.silver, { y: 40 + 205 * Math.cos(0.5), z: -90 - 205 * Math.sin(0.5), rx: -0.5, parent: remote, seg: 8 }));
+    remote.meshes = bakeInto(remote, parts);
+    shadowBlob(300, 320, -640, 0, 380, -0.8);
+  }
+  // where the car cannot go: the walls, and the footprints of the furniture
+  const blocks = [[-700, 700, -1000, -300], [-1990, -1410, -810, 510], [-1330, -970, -160, 560], [-2000, -950, 530, 2600], [1220, 1940, -90, 390], [300, 820, -260, 360]].map(([x0, x1, z0, z1]) => ({ x0, x1, z0, z1 }));
+  const CAR_R = 170;
+  const stepCar = (dt) => {
+    const c = car;
+    c.steer += (c.steerIn * 0.5 - c.steer) * Math.min(1, dt * 9);
+    if (c.driving && c.throttle) c.v += c.throttle * 2600 * dt;
+    else c.v -= c.v * Math.min(1, dt * 2.2);
+    c.v = Math.max(-900, Math.min(2100, c.v));
+    if (Math.abs(c.v) < 1) c.v = 0;
+    c.yaw += (c.v / 228) * Math.tan(c.steer) * dt;
+    let x = c.x + Math.cos(c.yaw) * c.v * dt, z = c.z - Math.sin(c.yaw) * c.v * dt;
+    let hit = false;
+    const x0 = -ROOM.halfW + CAR_R + 30, x1 = ROOM.halfW - CAR_R - 30, z0 = ROOM.back + CAR_R + 30, z1 = ROOM.front - CAR_R - 30;
+    if (x < x0) { x = x0; hit = true; } else if (x > x1) { x = x1; hit = true; }
+    if (z < z0) { z = z0; hit = true; } else if (z > z1) { z = z1; hit = true; }
+    for (const b of blocks) {
+      if (x <= b.x0 - CAR_R || x >= b.x1 + CAR_R || z <= b.z0 - CAR_R || z >= b.z1 + CAR_R) continue;
+      const dx0 = x - (b.x0 - CAR_R), dx1 = b.x1 + CAR_R - x, dz0 = z - (b.z0 - CAR_R), dz1 = b.z1 + CAR_R - z;
+      const m = Math.min(dx0, dx1, dz0, dz1);
+      if (m === dx0) x = b.x0 - CAR_R; else if (m === dx1) x = b.x1 + CAR_R; else if (m === dz0) z = b.z0 - CAR_R; else z = b.z1 + CAR_R;
+      hit = true;
+    }
+    if (hit) c.v *= -0.25;
+    c.x = x;
+    c.z = z;
+    c.group.position.set(x, 0, z);
+    c.group.rotation.y = c.yaw;
+    c.group.rotation.z = -c.steer * (c.v / 2100) * 0.12;
+    for (const w of c.wheels) { w.wheel.rotation.z -= (c.v / 42) * dt; if (w.front) w.pivot.rotation.y = c.steer; }
+  };
 
   /* the CRT with the N64, right wall */
   const tvX = ROOM.halfW - 420, tvZ = 150;
@@ -667,6 +943,10 @@ export function createRoom({ scene }) {
      geometry changes when the photo arrives), and the screens. */
   const keep = new Set([poster, gloss, frame, clock, clockRing, screen, tvGlass, sky, bulb, dome, floor, ceiling, rugMesh]);
   for (const d of decks) { d.group.traverse((m) => keep.add(m)); for (const m of d.meshes) keep.add(m); }
+  for (const c of crates) { keep.add(c.mesh); keep.add(c.hit); }
+  for (const r of records) keep.add(r.mesh);
+  car.group.traverse((m) => keep.add(m));
+  remote.traverse((m) => keep.add(m));
   group.updateWorldMatrix(true, true);
   const buckets = new Map();
   const merged = [];
@@ -695,17 +975,29 @@ export function createRoom({ scene }) {
 
   /* interactives */
   const interactives = [];
-  for (const d of decks) interactives.push({ meshes: d.meshes, action: () => { d.playing = !d.playing; d.lamp.material.emissiveIntensity = d.playing ? 1.4 : 0; } });
+  for (const d of decks) interactives.push({ deck: d, meshes: d.meshes, action: () => setPlaying(d, !d.playing) });
 
   let elapsed = 0;
   return {
     group, decks, interactives, lamp, sun, panel,
+    crates, records, car, remote, takeRecord, returnRecord, placeRecord, setPlaying,
+    get held() { return held; },
     get shadowsDirty() { return shadowsDirty; },
     set shadowsDirty(v) { shadowsDirty = v; },
     phoneSpot: new THREE.Vector3(0, DESK.top, DESK.z + 230),
     update(dt) {
       elapsed += dt;
       for (const d of decks) if (d.playing) d.platter.rotation.y += dt * Math.PI * 2 * (33.33 / 60);
+      for (let i = tweens.length - 1; i >= 0; i--) {
+        const tw = tweens[i];
+        tw.t += dt * 1000;
+        const k = easeInOut(Math.min(1, tw.t / tw.dur));
+        tw.obj.position.lerpVectors(tw.from.p, tw.to.p, k);
+        tw.obj.position.y += Math.sin(k * Math.PI) * tw.lift;
+        tw.obj.quaternion.slerpQuaternions(tw.from.q, tw.to.q, k);
+        if (tw.t >= tw.dur) { tweens.splice(i, 1); tw.onDone?.(); }
+      }
+      if (car.driving || car.v !== 0) stepCar(dt);
       screenMat.map.offset.x = Math.sin(elapsed * 6) * 0.002;
       tvGlow.intensity = 0.8 + Math.sin(elapsed * 9) * 0.08 + Math.sin(elapsed * 23) * 0.05;
       const minute = Math.floor(Date.now() / 60000);

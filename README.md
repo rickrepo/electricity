@@ -6,14 +6,26 @@ surfaces: no 3D models, no build step, and no image files except the one
 photo you choose for the poster.
 
 You walk in at dusk and the phone boots. Drag to look around the room: the
-poster over the desk, the bed, two 1200s and a mixer along the wall with a
-crate of records under them, the CRT with the N64 and a controller on the
-rug, a nitro buggy on the floor and another on the shelf, the window with the
-curtains, a chair, a clock that keeps real time, a door. Click anywhere to
-walk up to the desk, click the phone to pick it up (the camera rolls to the
-phone's own up vector and fits it to your viewport), click the bezel or press
-Esc to put it down, click away to step back. The turntables spin if you click
-them. There are no buttons or words on the page: the room is the interface.
+poster over the desk, the bed, two 1200s and a mixer along the wall with two
+crates of records in front of them, the CRT with the N64 and a controller on
+the rug, a nitro buggy on the floor with its transmitter beside it and
+another buggy on the shelf, the window with the curtains, a chair, a clock
+that keeps real time, a door, an architect's lamp on the desk. Click anywhere
+to walk up to the desk, click the phone to pick it up (the camera rolls to
+the phone's own up vector and fits it to your viewport), click the bezel or
+press Esc to put it down, click away to step back. There are no buttons or
+words on the page: the room is the interface.
+
+Click the decks or the crates to go over to them. Click a record and it
+lifts out of its crate; click a turntable to put it on (the sleeve goes to
+the wall behind the deck and the one that was playing goes back in its
+crate), or click anywhere else to put it back. Click a turntable with empty
+hands to start and stop it.
+
+Click the buggy or its transmitter to pick the transmitter up and drive:
+the arrow keys or WASD steer and throttle, or drag anywhere (up for
+throttle, sideways to steer) on a touch screen. The buggy stops at the walls
+and the furniture. Tap, click, or press Esc to put the transmitter down.
 
 The light is the desk lamp (a spotlight with soft shadows), the window (an
 area light and a low sun), and the glow of the CRT. Corners are darkened in
