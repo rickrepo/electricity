@@ -62,12 +62,13 @@ export function createPhone({ screenCanvas }) {
   const add = (mesh, { cast = true } = {}) => { mesh.castShadow = cast; group.add(mesh); return mesh; };
 
   /* ---------- materials ---------- */
-  const chrome = new THREE.MeshStandardMaterial({ color: 0xe2e4e6, metalness: 1, roughness: 0.16 });
+  const chrome = new THREE.MeshStandardMaterial({ color: 0xdfe1e3, metalness: 1, roughness: 0.22, envMapIntensity: 0.85 });
   const alu = new THREE.MeshStandardMaterial({ color: 0xc2c4c7, metalness: 0.92, roughness: 0.4 });
   const plastic = new THREE.MeshStandardMaterial({ color: 0x141517, metalness: 0.05, roughness: 0.6 });
   const black = new THREE.MeshStandardMaterial({ color: 0x0b0b0d, metalness: 0.1, roughness: 0.35 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x1e1f23, metalness: 0.2, roughness: 0.5 });
-  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x07070a, metalness: 0, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.03 });
+  // Black glass: kept from washing out white when the room lights land on it head-on.
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x07070a, metalness: 0, roughness: 0.12, clearcoat: 0.7, clearcoatRoughness: 0.08, envMapIntensity: 0.35 });
 
   /* ---------- the back shell ---------- */
   // Extruded from an outline inset by the bevel, so the bevel brings it back
@@ -140,6 +141,7 @@ export function createPhone({ screenCanvas }) {
   const home = add(new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 1.2, 48), black), { cast: false });
   home.rotation.x = Math.PI / 2;
   home.position.set(0, homeY, halfD - 0.54);
+  home.name = 'home-button';
   const homeIcon = add(new THREE.Mesh(new THREE.PlaneGeometry(9, 9), new THREE.MeshBasicMaterial({ map: homeIconTexture(), transparent: true })), { cast: false });
   homeIcon.position.set(0, homeY, halfD + 0.08);
   const homeRing = add(new THREE.Mesh(new THREE.RingGeometry(5.55, 6.2, 48), dark), { cast: false });
@@ -165,6 +167,7 @@ export function createPhone({ screenCanvas }) {
   sleep.rotation.z = Math.PI / 2;
   sleep.scale.set(0.6, 1, 1);
   sleep.position.set(20.5, halfH, 0);
+  sleep.name = 'sleep-button';
 
   // headphone jack on top, left side
   const jack = add(new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 3, 32), black), { cast: false });
@@ -200,5 +203,5 @@ export function createPhone({ screenCanvas }) {
   lens.position.set(21.5, 47.5, -halfD + 0.05);
 
   const screenCenter = new THREE.Vector3(0, screenCY, halfD + 0.1);
-  return { group, screen, screenTexture: screenTex, screenCenter, spec: S };
+  return { group, screen, screenTexture: screenTex, screenCenter, spec: S, buttons: { home, homeIcon, sleep } };
 }

@@ -1,9 +1,9 @@
 // Ricky's phone: a 2007-era iPhone rebuilt from primitives, on a stand, in a
 // small studio. Look it over, pick it up, slide to unlock.
 import * as THREE from '../vendor/three.min.js';
-import { OrbitControls, RoomEnvironment } from '../vendor/three.min.js';
+import { OrbitControls } from '../vendor/three.min.js';
 import { createPhone, SPEC } from './phone.js';
-import { createLockScreen } from './lockscreen.js';
+import { createPhoneOS } from './os.js';
 import { floorAlphaTexture } from './textures.js';
 
 const $ = (id) => document.getElementById(id);
@@ -13,6 +13,27 @@ const coarse = matchMedia('(pointer: coarse)').matches;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+// A small photo studio for the reflections: dark walls, a soft key light
+// overhead, a tall strip on each side, a rim strip behind. Nothing bright
+// sits behind the camera, so the black glass stays black when held head-on.
+function studioEnvironment() {
+  const env = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), new THREE.MeshBasicMaterial({ color: 0x7c7d81, side: THREE.BackSide }));
+  room.position.y = 1.6;
+  env.add(room);
+  const panel = (w, h, level, x, y, z, rx, ry) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(level, level, level * 1.04), side: THREE.DoubleSide }));
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, 0);
+    env.add(m);
+  };
+  panel(2.6, 1.3, 14, 0, 3.4, 0.9, Math.PI / 2, 0);
+  panel(0.5, 2.6, 9, -2.9, 1.7, 0.5, 0, Math.PI / 2);
+  panel(0.5, 2.6, 6, 2.9, 1.7, -0.3, 0, -Math.PI / 2);
+  panel(3.2, 0.35, 5, 0, 2.5, -2.9, 0, 0);
+  return env;
+}
 
 function hasWebGL() {
   try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
@@ -33,8 +54,8 @@ function main() {
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.9;
+  scene.environment = pmrem.fromScene(studioEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 1.0;
   pmrem.dispose();
 
   const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 1, 6000);
@@ -63,7 +84,7 @@ function main() {
   rig.add(support);
 
   /* ---------- the phone ---------- */
-  const lock = createLockScreen({ carrier: 'Ricky' });
+  const lock = createPhoneOS({ carrier: 'Ricky', logo: 'R' });
   lock.draw();
   const phone = createPhone({ screenCanvas: lock.canvas });
   phone.group.position.y = SPEC.height / 2;
@@ -120,13 +141,15 @@ function main() {
     const dw = w / 2 / (Math.tan(fov / 2) * camera.aspect) / fill;
     return Math.max(dh, dw);
   };
+  // In hand the whole phone is in view, buttons included: the body is fitted
+  // to the viewport and the camera looks straight down the screen's normal.
   const screenPose = () => {
     phone.group.updateWorldMatrix(true, false);
     phone.group.getWorldQuaternion(tmpQ);
-    const center = phone.group.localToWorld(phone.screenCenter.clone());
+    const center = phone.group.localToWorld(new THREE.Vector3(0, 0, SPEC.depth / 2));
     const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(tmpQ);
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(tmpQ);
-    const d = fitDistance(SPEC.screen.width, SPEC.screen.height, coarse ? 0.97 : 0.84);
+    const d = fitDistance(SPEC.width, SPEC.height, coarse ? 0.98 : 0.92);
     return { pos: center.clone().addScaledVector(normal, d), target: center, up };
   };
   const flyTo = (to, dur, onDone) => {
@@ -206,6 +229,24 @@ function main() {
     return { x: (local.x / SPEC.screen.width + 0.5) * lock.width, y: (0.5 - local.y / SPEC.screen.height) * lock.height };
   };
 
+  // the physical buttons: home (below the screen) and sleep (top edge)
+  const pressAnim = new Map();
+  const pressButton = (which) => {
+    const mesh = phone.buttons[which];
+    if (pressAnim.has(mesh)) return;
+    const rest = mesh.position.clone();
+    const dir = which === 'home' ? new THREE.Vector3(0, 0, -0.35) : new THREE.Vector3(0, -0.45, 0);
+    pressAnim.set(mesh, { rest, dir, start: performance.now() });
+    if (which === 'home') lock.pressHome();
+    else lock.pressSleep();
+  };
+  const buttonAt = (e) => {
+    setRay(e);
+    const hit = raycaster.intersectObjects([phone.buttons.home, phone.buttons.homeIcon, phone.buttons.sleep], false)[0];
+    if (!hit) return null;
+    return hit.object === phone.buttons.sleep ? 'sleep' : 'home';
+  };
+
   const el = renderer.domElement;
   el.addEventListener('pointerdown', (e) => {
     down = { x: e.clientX, y: e.clientY, t: performance.now() };
@@ -219,12 +260,13 @@ function main() {
   });
   el.addEventListener('pointermove', (e) => {
     if (knobDrag) { const p = screenPoint(e, true); if (p) lock.pointer.move(p.x); return; }
-    if (!coarse && state === 'orbit' && !down) el.style.cursor = hitsPhone(e) ? 'pointer' : '';
+    if (!coarse && !down && !move.active) el.style.cursor = buttonAt(e) ? 'pointer' : state === 'orbit' && hitsPhone(e) ? 'pointer' : '';
   });
   const endPointer = (e) => {
     if (knobDrag) {
       knobDrag = false;
-      lock.pointer.up(performance.now());
+      const p = screenPoint(e, true) || { x: -1, y: -1 };
+      lock.pointer.up(p.x, p.y, performance.now());
       if (state === 'orbit') controls.enabled = true;
       down = null;
       return;
@@ -234,28 +276,40 @@ function main() {
     const quick = performance.now() - down.t < 700;
     down = null;
     if (moved > 8 || !quick || move.active || spin.active) return;
+    const button = buttonAt(e);
+    if (button) return pressButton(button);
     if (state === 'orbit' && hitsPhone(e)) pickUp();
     else if (state === 'up' && !screenPoint(e)) putDown();
   };
   el.addEventListener('pointerup', endPointer);
-  el.addEventListener('pointercancel', () => { if (knobDrag) { knobDrag = false; lock.pointer.up(); if (state === 'orbit') controls.enabled = true; } down = null; });
+  el.addEventListener('pointercancel', () => { if (knobDrag) { knobDrag = false; lock.pointer.up(-1, -1); if (state === 'orbit') controls.enabled = true; } down = null; });
   el.addEventListener('contextmenu', (e) => e.preventDefault());
 
   /* ---------- HUD ---------- */
   const hints = {
     orbit: coarse ? 'Drag to look around  ·  pinch to zoom  ·  tap the phone to pick it up' : 'Drag to look around  ·  scroll to zoom  ·  click the phone to pick it up',
-    up: coarse ? 'Slide to unlock  ·  tap the bezel to put it down' : 'Slide to unlock  ·  Esc or click the bezel to put it down',
+    up: {
+      off: coarse ? 'Press the home button to wake it  ·  tap the bezel to put it down' : 'Press the home button to wake it  ·  Esc puts it down',
+      lock: coarse ? 'Slide to unlock  ·  tap the bezel to put it down' : 'Slide to unlock  ·  Esc or click the bezel to put it down',
+      home: coarse ? 'Tap an icon  ·  the home button goes home' : 'Click an icon  ·  the home button goes home  ·  Esc puts it down',
+      app: coarse ? 'Press the home button to go home' : 'Press the home button to go home  ·  Esc puts it down',
+    },
   };
   function setHint(text) {
-    const t = text === undefined ? hints[state] || '' : text;
+    let t = text;
+    if (t === undefined) t = state === 'up' ? hints.up[lock.mode] ?? '' : hints[state] ?? '';
     ui.hint.textContent = t;
     ui.hint.classList.toggle('hide', !t);
   }
+  lock.onMode(() => { if (state === 'up') setHint(); });
   ui.pick.addEventListener('click', () => (state === 'up' ? putDown() : pickUp()));
   ui.flip.addEventListener('click', flip);
   addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && state === 'up') putDown();
-    if ((e.key === 'f' || e.key === 'F') && state === 'orbit' && !e.metaKey && !e.ctrlKey) flip();
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if ((e.key === 'f' || e.key === 'F') && state === 'orbit') flip();
+    if (e.key === 'h' || e.key === 'H') pressButton('home');
+    if (e.key === 's' || e.key === 'S') pressButton('sleep');
   });
   setHint();
 
@@ -295,19 +349,26 @@ function main() {
       controls.update();
     }
 
-    // the lock screen: ~30 fps up close (the shimmer), a slow clock far away
+    // the buttons spring back
+    for (const [mesh, a] of pressAnim) {
+      const t = (now - a.start) / 160;
+      if (t >= 1) { mesh.position.copy(a.rest); pressAnim.delete(mesh); continue; }
+      mesh.position.copy(a.rest).addScaledVector(a.dir, Math.sin(t * Math.PI));
+    }
+
+    // the screen: ~30 fps up close (the shimmer), a slow clock far away
     phone.screen.getWorldPosition(screenWorld);
     const dist = camera.position.distanceTo(screenWorld);
     const interval = dist < 260 ? 33 : dist < 600 ? 120 : 1000;
     if (lock.needsRedraw(now, interval)) { lock.draw(now); phone.screenTexture.needsUpdate = true; }
 
     renderer.render(scene, camera);
-    if (first) { first = false; document.body.classList.add('ready'); }
+    if (first) { first = false; document.body.classList.add('ready'); setTimeout(() => lock.boot(), reduced ? 200 : 900); }
   };
   tick();
 
   // handy from the console
-  window.ricky = { scene, camera, controls, phone, lock, pickUp, putDown, flip, get state() { return state; } };
+  window.ricky = { scene, camera, controls, phone, os: lock, pickUp, putDown, flip, pressButton, get state() { return state; } };
 }
 
 try { main(); } catch (err) { console.error(err); ui.fail.hidden = false; ui.fail.querySelector('p').textContent = `Something went wrong while drawing the phone: ${err.message || err}`; }
