@@ -24,7 +24,6 @@ export function createDesktop(os) {
     btn.addEventListener('pointerdown', (e) => { lastPointerType = e.pointerType || 'mouse'; });
     btn.addEventListener('click', (e) => {
       select(btn);
-      // touch: single tap opens; mouse: double click opens
       if (lastPointerType === 'touch' || e.detail >= 2) os.open(app.id);
       else sound.tick();
     });
@@ -42,17 +41,17 @@ export function createDesktop(os) {
     app.updateIcon();
   }
 
-  os.bus.on('trash:change', () => os.apps.find((a) => a.id === 'trash')?.updateIcon?.());
-
-  desktopEl.addEventListener('pointerdown', (e) => {
-    if (e.target === desktopEl || e.target === shortcutsEl || e.target === os.windowsEl) select(null);
-    if (!e.target.closest('.os-context-menu')) closeContextMenu();
-  });
+  os.bus.on('bin:change', () => os.apps.find((a) => a.id === 'bin')?.updateIcon?.());
 
   const closeContextMenu = () => {
     contextMenu?.remove();
     contextMenu = null;
   };
+
+  desktopEl.addEventListener('pointerdown', (e) => {
+    if (e.target === desktopEl || e.target === shortcutsEl || e.target === os.windowsEl) select(null);
+    if (!e.target.closest('.os-context-menu')) closeContextMenu();
+  });
 
   desktopEl.addEventListener('contextmenu', (e) => {
     if (e.target.closest('.os-window') || e.target.closest('.os-shortcut')) return;
@@ -64,17 +63,15 @@ export function createDesktop(os) {
     const y = (e.clientY - rect.top) / scale;
     const item = (label, iconName, fn) => el('button', { class: 'os-menu-item', type: 'button', onClick: () => { closeContextMenu(); fn(); } }, iconEl(iconName), label);
     contextMenu = el('div', { class: 'os-context-menu', role: 'menu' },
-      item('Arrange icons', 'folder', () => sound.tick()),
-      item('Change wallpaper...', 'settings', () => os.open('settings')),
-      item('New text file', 'notepad', () => os.open('notepad', { file: 'untitled.txt' })),
+      item('Tidy the bench', 'settings', () => { sound.tick(); os.toast?.('The bench is as tidy as it gets.'); }),
+      item('Wallpaper...', 'sketch', () => os.open('settings')),
+      item('New note', 'notes', () => os.open('notes', { file: 'untitled.txt' })),
       el('div', { class: 'os-menu-sep' }),
       item('About RickyOS', 'info', () => os.about())
     );
     desktopEl.append(contextMenu);
-    const mw = contextMenu.offsetWidth;
-    const mh = contextMenu.offsetHeight;
-    contextMenu.style.left = `${Math.min(x, desktopEl.clientWidth - mw - 4)}px`;
-    contextMenu.style.top = `${Math.min(y, desktopEl.clientHeight - mh - 4)}px`;
+    contextMenu.style.left = `${Math.min(x, desktopEl.clientWidth - contextMenu.offsetWidth - 4)}px`;
+    contextMenu.style.top = `${Math.min(y, desktopEl.clientHeight - contextMenu.offsetHeight - 4)}px`;
     sound.tick();
   });
 

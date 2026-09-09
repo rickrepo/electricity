@@ -1,65 +1,56 @@
-// Taskbar: start button + start menu, running window tabs, volume, clock.
+// The power strip: menu button, one outlet per open window, sound switch,
+// and an LCD clock.
 import { el, formatClock } from '../util/dom.js';
 import { iconEl } from './icons.js';
 import { sound } from '../sound.js';
 
-export function createTaskbar(os) {
-  const startBtn = el('button', { class: 'os-start-btn', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, iconEl('logo'), 'Start');
-  const tasks = el('div', { class: 'os-tasks', role: 'list' });
-  const volBtn = el('button', { class: 'os-tray-btn', type: 'button', title: 'Toggle sound', 'aria-label': 'Toggle sound' });
-  const clock = el('span', { class: 'os-clock', role: 'timer' });
-  const tray = el('div', { class: 'os-tray' }, volBtn, clock);
-  os.taskbarEl.append(startBtn, tasks, tray);
+export function createStrip(os) {
+  const menuBtn = el('button', { class: 'os-menu-btn', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, iconEl('menu'), 'Menu');
+  const outlets = el('div', { class: 'os-outlets', role: 'list' });
+  const soundBtn = el('button', { class: 'os-switch', type: 'button', title: 'Toggle sound', 'aria-label': 'Toggle sound' });
+  const lcd = el('span', { class: 'os-lcd', role: 'timer' });
+  os.stripEl.append(menuBtn, outlets, el('div', { class: 'os-strip-right' }, soundBtn, lcd));
 
-  /* ----- clock ----- */
   const tickClock = () => {
     const now = new Date();
-    clock.textContent = formatClock(now);
-    clock.title = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    lcd.textContent = formatClock(now);
+    lcd.title = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
   tickClock();
   setInterval(tickClock, 10000);
 
-  /* ----- volume ----- */
-  const renderVol = () => volBtn.replaceChildren(iconEl(sound.muted ? 'volumeOff' : 'volumeOn'));
-  renderVol();
-  sound.on('mute', renderVol);
-  volBtn.addEventListener('click', () => {
+  const renderSound = () => soundBtn.replaceChildren(iconEl(sound.muted ? 'volumeOff' : 'volumeOn'), sound.muted ? 'Off' : 'Snd');
+  renderSound();
+  sound.on('mute', renderSound);
+  soundBtn.addEventListener('click', () => {
     sound.unlock();
     sound.toggleMuted();
     if (!sound.muted) sound.tick();
   });
 
-  /* ----- window tabs ----- */
-  const renderTasks = () => {
-    tasks.replaceChildren();
+  const renderOutlets = () => {
+    outlets.replaceChildren();
     for (const win of os.wm.list().sort((a, b) => a.created - b.created)) {
-      const btn = el('button', {
-        class: `os-task${os.wm.focusedId === win.id && !win.minimized ? ' active' : ''}${win.minimized ? ' minimized' : ''}`,
-        type: 'button',
-        role: 'listitem',
-        title: win.title,
-      }, iconEl(win.iconName), el('span', {}, win.title));
+      const active = os.wm.focusedId === win.id && !win.minimized;
+      const btn = el('button', { class: `os-outlet${active ? ' active' : ''}${win.minimized ? ' minimized' : ''}`, type: 'button', role: 'listitem', title: win.title },
+        el('i', { class: 'led' }), iconEl(win.iconName), el('span', {}, win.title));
       btn.addEventListener('click', () => {
         win.toggleMinimize();
         sound.tick();
       });
-      tasks.append(btn);
+      outlets.append(btn);
     }
   };
-  os.wm.on('change', renderTasks);
+  os.wm.on('change', renderOutlets);
 
-  /* ----- start menu ----- */
   let menu = null;
-
   const closeMenu = () => {
     if (!menu) return;
     menu.remove();
     menu = null;
-    startBtn.classList.remove('open');
-    startBtn.setAttribute('aria-expanded', 'false');
+    menuBtn.classList.remove('open');
+    menuBtn.setAttribute('aria-expanded', 'false');
   };
-
   const menuItem = (label, iconName, fn, hint) => {
     const item = el('button', { class: 'os-menu-item', type: 'button', role: 'menuitem' }, iconEl(iconName), label, hint ? el('span', { class: 'os-menu-hint' }, hint) : null);
     item.addEventListener('click', () => {
@@ -68,46 +59,42 @@ export function createTaskbar(os) {
     });
     return item;
   };
-
   const openMenu = () => {
     if (menu) return;
-    const items = el('div', { class: 'os-startmenu-items' });
+    const items = el('div', { class: 'os-menu-items' });
     for (const app of os.apps.filter((a) => a.startMenu !== false)) {
       items.append(menuItem(app.name, typeof app.iconFor === 'function' ? app.iconFor(os) : app.icon, () => os.open(app.id)));
     }
-    items.append(el('div', { class: 'os-menu-sep' }));
-    items.append(menuItem('About RickyOS', 'info', () => os.about()));
-    if (os.onSwitchMode) {
-      items.append(menuItem(os.mode === 'scene' ? 'Leave the 3D desk' : 'Enter the 3D desk', 'cube', () => os.onSwitchMode(), os.mode === 'scene' ? '2D' : '3D'));
-    }
-    items.append(menuItem('Shut Down...', 'power', () => os.shutdown()));
-    menu = el('div', { class: 'os-startmenu', role: 'menu' },
-      el('div', { class: 'os-startmenu-banner' }, el('span', {}, 'RickyOS 98')),
-      items
+    const foot = el('div', { class: 'os-menu-foot' });
+    foot.append(menuItem('About RickyOS', 'info', () => os.about()));
+    foot.append(menuItem('Shut down', 'power', () => os.shutdown()));
+    menu = el('div', { class: 'os-menu', role: 'menu' },
+      el('div', { class: 'os-menu-head' }, el('span', { class: 'tape orange' }, 'RickyOS'), el('small', {}, 'RK-1 / v1.0')),
+      items,
+      foot
     );
     os.screen.append(menu);
-    startBtn.classList.add('open');
-    startBtn.setAttribute('aria-expanded', 'true');
+    menuBtn.classList.add('open');
+    menuBtn.setAttribute('aria-expanded', 'true');
     items.querySelector('button')?.focus();
   };
 
-  startBtn.addEventListener('click', () => {
+  menuBtn.addEventListener('click', () => {
     sound.unlock();
     sound.click();
     if (menu) closeMenu();
     else openMenu();
   });
-
   document.addEventListener('pointerdown', (e) => {
-    if (menu && !menu.contains(e.target) && !startBtn.contains(e.target)) closeMenu();
+    if (menu && !menu.contains(e.target) && !menuBtn.contains(e.target)) closeMenu();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && menu) {
       closeMenu();
-      startBtn.focus();
+      menuBtn.focus();
     }
   });
 
-  os.startMenu = { open: openMenu, close: closeMenu };
-  renderTasks();
+  os.menu = { open: openMenu, close: closeMenu };
+  renderOutlets();
 }

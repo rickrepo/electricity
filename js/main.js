@@ -1,82 +1,58 @@
-// Entry point. Decides between the 3D desk and plain 2D RickyOS, runs the
-// BIOS boot screen, then starts the chosen experience.
+// Entry point. The bench is 3D only: desktops lean in to the CRT, phones
+// pick up the phone lying on the bench.
 import { hasWebGL, isCoarsePointer, sleep } from './util/dom.js';
-import { runBoot } from './boot.js';
+import { runGate, showGateFailure } from './boot.js';
 import { createOS } from './os/os.js';
+import { fitPhoneToViewport } from './scene/constants.js';
 import { sound } from './sound.js';
 
 async function main() {
-  const params = new URLSearchParams(location.search);
-  const webgl = hasWebGL();
-  const smallScreen = Math.min(innerWidth, innerHeight) < 560 || (isCoarsePointer() && innerWidth < 900);
-  const requested = params.get('mode');
-
-  let mode;
-  if (requested === 'os') mode = 'os';
-  else if (requested === '3d') mode = webgl ? 'scene' : 'os';
-  else mode = webgl && !smallScreen ? 'scene' : 'os';
-
-  document.body.dataset.mode = mode;
-
-  const switchMode = (next) => {
-    const url = new URL(location.href);
-    url.searchParams.set('mode', next === 'scene' ? '3d' : 'os');
-    location.href = url.toString();
-  };
-
-  const osRoot = document.getElementById('os-root');
+  const gateEl = document.getElementById('gate');
+  if (!document.body.dataset.cam) document.body.dataset.cam = 'loading';
   const stage = document.getElementById('stage');
-  const bootEl = document.getElementById('boot');
+  const osRoot = document.getElementById('os-root');
 
-  const os = createOS(osRoot, { mode, onSwitchMode: () => switchMode(mode === 'scene' ? 'os' : 'scene') });
+  if (!hasWebGL()) {
+    showGateFailure(gateEl, 'This bench needs WebGL, and this browser does not have it switched on. Try a current version of Chrome, Firefox, Safari, or Edge.');
+    return;
+  }
+
+  const coarse = isCoarsePointer();
+  const device = coarse && Math.min(innerWidth, innerHeight) < 700 ? 'phone' : 'crt';
+  document.body.dataset.device = device;
+  if (device === 'phone') fitPhoneToViewport(innerWidth, innerHeight);
+
+  const os = createOS(osRoot, { layout: device });
   window.__rickyOS = os;
 
-  let scene = null;
-  let tasks;
+  const { createScene } = await import('./scene/app.js');
+  const scene = createScene({ stage, osElement: osRoot, os, device });
+  window.__rickyScene = scene;
+  const tasks = scene.bootTasks();
   const notes = [];
+  if (device === 'phone') notes.push('Phone detected: the phone on the bench is yours.');
 
-  if (mode === 'scene') {
-    try {
-      const { createScene } = await import('./scene/app.js');
-      scene = createScene({ stage, osElement: osRoot, os, onSwitchMode: switchMode });
-      window.__rickyScene = scene;
-      tasks = scene.bootTasks();
-      if (isCoarsePointer()) notes.push('Best experienced with a mouse and keyboard.');
-    } catch (err) {
-      console.error('[main] 3D scene failed to initialise, falling back to 2D', err);
-      mode = 'os';
-      document.body.dataset.mode = 'os';
-      stage.hidden = true;
-      notes.push('The 3D desk could not start in this browser, so RickyOS is running in 2D.');
-    }
-  }
-  if (mode === 'os') {
-    stage.hidden = true;
-    tasks = [
-      { label: 'Loading fonts', run: () => Promise.race([document.fonts.ready, sleep(2500)]) },
-      { label: 'Preparing desktop', run: () => sleep(140) },
-      { label: 'Indexing applications', run: () => sleep(120) },
-      { label: 'Polishing icons', run: () => sleep(90) },
-    ];
-    if (requested === '3d' && !webgl) notes.push('WebGL is not available here, so the 3D desk is disabled.');
-    else if (!requested && webgl && smallScreen) notes.push('Small screen detected: starting in 2D mode.');
-  }
-
-  const altMode = mode === 'scene' ? 'os' : webgl ? 'scene' : null;
-  const result = await runBoot({ container: bootEl, mode, tasks, notes, altMode, onAlt: (m) => switchMode(m) });
-  if (result.switched) return;
+  await runGate({
+    container: gateEl,
+    notes,
+    touch: coarse,
+    prepare: async (setStatus) => {
+      for (const task of tasks) {
+        setStatus(task.label);
+        await task.run?.();
+        await sleep(40);
+      }
+    },
+  });
 
   sound.unlock();
-  sound.startup();
-  if (scene) scene.start();
-  else os.boot();
+  scene.start();
 }
-
-// Handy for poking around from the console: ricky.os.open("terminal"), etc.
-window.ricky = { get os() { return window.__rickyOS; }, get scene() { return window.__rickyScene; }, sound };
 
 main().catch((err) => {
   console.error(err);
-  const boot = document.getElementById('boot');
-  if (boot) boot.innerHTML = `<p class="boot-red">CRITICAL ERROR: ${String(err.message || err)}</p><p>Reload the page to try again.</p>`;
+  showGateFailure(document.getElementById('gate'), `Something went wrong while switching on: ${String(err.message || err)}. Reload the page to try again.`);
 });
+
+// Handy from the console: ricky.os.open('terminal'), ricky.scene.world.cat.poke()
+window.ricky = { get os() { return window.__rickyOS; }, get scene() { return window.__rickyScene; }, sound };

@@ -70,8 +70,8 @@ export class WindowManager extends Emitter {
   _nextPosition(width, height) {
     const { width: W, height: H } = this.bounds;
     const i = this.cascadeIndex++ % 8;
-    const x = clamp(56 + i * CASCADE + 40, 0, Math.max(0, W - width));
-    const y = clamp(24 + i * CASCADE, 0, Math.max(0, H - height));
+    const x = clamp(112 + i * CASCADE, 0, Math.max(0, W - width));
+    const y = clamp(22 + i * CASCADE, 0, Math.max(0, H - height));
     return { x, y };
   }
 
@@ -118,17 +118,16 @@ class OSWindow {
   _build() {
     const o = this.options;
     this.titleEl = el('span', { class: 'os-title-text' }, iconEl(this.iconName), el('span', {}, this.title));
-    this.closeBtn = el('button', { class: 'os-title-btn close', type: 'button', title: 'Close', 'aria-label': 'Close window' }, iconEl('close'));
-    this.minBtn = el('button', { class: 'os-title-btn', type: 'button', title: 'Minimize', 'aria-label': 'Minimize window' }, iconEl('minimize'));
-    this.maxBtn = el('button', { class: 'os-title-btn', type: 'button', title: 'Maximize', 'aria-label': 'Maximize window' }, iconEl('maximize'));
+    this.closeBtn = el('button', { class: 'os-title-btn close', type: 'button', title: 'Close', 'aria-label': 'Close window' });
+    this.minBtn = el('button', { class: 'os-title-btn min', type: 'button', title: 'Minimize', 'aria-label': 'Minimize window' });
+    this.maxBtn = el('button', { class: 'os-title-btn max', type: 'button', title: 'Maximize', 'aria-label': 'Maximize window' });
 
     this.titlebar = el('div', { class: 'os-titlebar' },
-      this.closeBtn,
-      el('span', { class: 'os-title-stripes' }),
       this.titleEl,
-      el('span', { class: 'os-title-stripes' }),
+      el('span', { class: 'os-title-spacer' }),
       this.minBtn,
-      o.maximizable === false ? null : this.maxBtn
+      o.maximizable === false ? null : this.maxBtn,
+      this.closeBtn
     );
 
     this.body = el('div', { class: `os-window-body ${o.bodyClass || ''}`, tabindex: '-1' });
@@ -193,10 +192,7 @@ class OSWindow {
     } else {
       this.el.classList.add('active');
     }
-    // give keyboard focus to the body unless a control inside already has it
-    if (!this.el.contains(document.activeElement)) {
-      this.body.focus({ preventScroll: true });
-    }
+    if (!this.el.contains(document.activeElement)) this.body.focus({ preventScroll: true });
   }
 
   minimize() {
@@ -224,11 +220,8 @@ class OSWindow {
     if (this.minimized) {
       this.restore();
       this.focus();
-    } else if (this.manager.focusedId === this.id) {
-      this.minimize();
-    } else {
-      this.focus();
-    }
+    } else if (this.manager.focusedId === this.id) this.minimize();
+    else this.focus();
   }
 
   maximize() {
@@ -236,7 +229,6 @@ class OSWindow {
     this._prevRect = { ...this.rect };
     this.maximized = true;
     this.el.classList.add('maximized');
-    this.maxBtn.replaceChildren(iconEl('restore'));
     this.maxBtn.title = 'Restore';
     this._apply();
     this.options.onResize?.(this);
@@ -246,7 +238,6 @@ class OSWindow {
     if (!this.maximized) return;
     this.maximized = false;
     this.el.classList.remove('maximized');
-    this.maxBtn.replaceChildren(iconEl('maximize'));
     this.maxBtn.title = 'Maximize';
     if (this._prevRect) this.rect = { ...this._prevRect };
     this._fit();
@@ -302,7 +293,6 @@ class OSWindow {
     this.statusRight.textContent = right ?? '';
   }
 
-  /** Registers a cleanup function to run when the window closes. */
   onCleanup(fn) {
     this._listeners.push(fn);
   }
@@ -320,12 +310,9 @@ class OSWindow {
     const { width: W, height: H } = this.manager.bounds;
     this.el.classList.add('dragging');
     this.titlebar.setPointerCapture?.(e.pointerId);
-
     const move = (ev) => {
-      const dx = (ev.clientX - startX) / scale;
-      const dy = (ev.clientY - startY) / scale;
-      this.rect.x = clamp(origin.x + dx, -(this.rect.width - 80), W - 80);
-      this.rect.y = clamp(origin.y + dy, 0, H - 32);
+      this.rect.x = clamp(origin.x + (ev.clientX - startX) / scale, -(this.rect.width - 80), W - 80);
+      this.rect.y = clamp(origin.y + (ev.clientY - startY) / scale, 0, H - 32);
       this._apply();
     };
     const up = (ev) => {
@@ -354,12 +341,9 @@ class OSWindow {
     const minH = this.options.minHeight || 140;
     this.el.classList.add('resizing');
     this.resizeHandle.setPointerCapture?.(e.pointerId);
-
     const move = (ev) => {
-      const dx = (ev.clientX - startX) / scale;
-      const dy = (ev.clientY - startY) / scale;
-      this.rect.width = clamp(origin.width + dx, minW, W - this.rect.x);
-      this.rect.height = clamp(origin.height + dy, minH, H - this.rect.y);
+      this.rect.width = clamp(origin.width + (ev.clientX - startX) / scale, minW, W - this.rect.x);
+      this.rect.height = clamp(origin.height + (ev.clientY - startY) / scale, minH, H - this.rect.y);
       this._apply();
       this.options.onResize?.(this);
     };
@@ -376,7 +360,7 @@ class OSWindow {
     this.resizeHandle.addEventListener('pointercancel', up);
   }
 
-  /** CSS px per screen px: inside the 3D monitor the OS is scaled. */
+  /** Screen px per CSS px: inside the 3D monitor the OS is scaled. */
   _scale() {
     const w = this.manager.layer.getBoundingClientRect().width;
     const cw = this.manager.layer.clientWidth;

@@ -1,7 +1,8 @@
 Fonts in this directory are distributed under the SIL Open Font License 1.1.
 
-- VT323          (c) Peter Hull        https://fonts.google.com/specimen/VT323
-- Silkscreen     (c) Jason Kottke      https://fonts.google.com/specimen/Silkscreen
-- Space Grotesk  (c) Florian Karsten   https://fonts.google.com/specimen/Space+Grotesk
+- VT323          (c) Peter Hull                 https://fonts.google.com/specimen/VT323
+- Pixelify Sans  (c) Stefie Justprince          https://fonts.google.com/specimen/Pixelify+Sans
+- IBM Plex Sans  (c) IBM Corp.                  https://fonts.google.com/specimen/IBM+Plex+Sans
+- IBM Plex Mono  (c) IBM Corp.                  https://fonts.google.com/specimen/IBM+Plex+Mono
 
 Full license text: https://openfontlicense.org/open-font-license-official-text/
