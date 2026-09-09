@@ -62,7 +62,7 @@ export function createPhone({ screenCanvas }) {
   const add = (mesh, { cast = true } = {}) => { mesh.castShadow = cast; group.add(mesh); return mesh; };
 
   /* ---------- materials ---------- */
-  const chrome = new THREE.MeshStandardMaterial({ color: 0xdfe1e3, metalness: 1, roughness: 0.22, envMapIntensity: 0.85 });
+  const chrome = new THREE.MeshStandardMaterial({ color: 0xdfe1e3, metalness: 1, roughness: 0.3, envMapIntensity: 0.7 });
   const alu = new THREE.MeshStandardMaterial({ color: 0xc2c4c7, metalness: 0.92, roughness: 0.4 });
   const plastic = new THREE.MeshStandardMaterial({ color: 0x141517, metalness: 0.05, roughness: 0.6 });
   const black = new THREE.MeshStandardMaterial({ color: 0x0b0b0d, metalness: 0.1, roughness: 0.35 });
@@ -77,7 +77,7 @@ export function createPhone({ screenCanvas }) {
   const B = 3.2;
   const shellShape = roundedRect(S.width - 2 * B, S.height - 2 * B, S.corner - B, [seamY]);
   const shellGeo = new THREE.ExtrudeGeometry(shellShape, { depth: S.depth - 2 * B, bevelEnabled: true, bevelThickness: B, bevelSize: B, bevelSegments: 10, curveSegments: 18 });
-  shellGeo.translate(0, 0, -(S.depth - 2 * B) / 2);
+  shellGeo.translate(0, 0, -(S.depth - 2 * B) / 2 - 0.35);
   // Caps keep material 0 (textured). Walls split at the seam: 1 metal, 2 plastic.
   const [caps, walls] = shellGeo.groups.map((g) => ({ ...g }));
   shellGeo.clearGroups();
@@ -115,7 +115,7 @@ export function createPhone({ screenCanvas }) {
   homeHole.absarc(0, homeY, 5.75, 0, Math.PI * 2, true);
   glassShape.holes.push(homeHole);
   const glass = add(new THREE.Mesh(new THREE.ShapeGeometry(glassShape, 24), glassMat), { cast: false });
-  glass.position.z = halfD + 0.05;
+  glass.position.z = halfD + 0.2;
 
   /* ---------- the screen ---------- */
   const screenTex = new THREE.CanvasTexture(screenCanvas);
@@ -124,7 +124,7 @@ export function createPhone({ screenCanvas }) {
   // Unlit: the picture is the light source. The glass around it carries the reflections.
   const screenMat = new THREE.MeshBasicMaterial({ map: screenTex });
   const screen = add(new THREE.Mesh(new THREE.PlaneGeometry(S.screen.width, S.screen.height), screenMat), { cast: false });
-  screen.position.set(0, screenCY, halfD + 0.1);
+  screen.position.set(0, screenCY, halfD + 0.45);
   screen.name = 'screen';
 
   /* ---------- earpiece and home button ---------- */
@@ -136,16 +136,16 @@ export function createPhone({ screenCanvas }) {
     const uv = ear.geometry.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) - bb.min.x) / (bb.max.x - bb.min.x), (uv.getY(i) - bb.min.y) / (bb.max.y - bb.min.y));
   }
-  ear.position.z = halfD + 0.02;
+  ear.position.z = halfD + 0.1;
 
   const home = add(new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 1.2, 48), black), { cast: false });
   home.rotation.x = Math.PI / 2;
-  home.position.set(0, homeY, halfD - 0.54);
+  home.position.set(0, homeY, halfD - 0.5);
   home.name = 'home-button';
   const homeIcon = add(new THREE.Mesh(new THREE.PlaneGeometry(9, 9), new THREE.MeshBasicMaterial({ map: homeIconTexture(), transparent: true })), { cast: false });
-  homeIcon.position.set(0, homeY, halfD + 0.08);
+  homeIcon.position.set(0, homeY, halfD + 0.16);
   const homeRing = add(new THREE.Mesh(new THREE.RingGeometry(5.55, 6.2, 48), dark), { cast: false });
-  homeRing.position.set(0, homeY, halfD + 0.055);
+  homeRing.position.set(0, homeY, halfD + 0.3);
 
   /* ---------- buttons and ports around the edge ---------- */
   const capsule = (r, len, mat) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 20), mat);
@@ -157,7 +157,7 @@ export function createPhone({ screenCanvas }) {
 
   // ring/silent switch above it
   const slot = add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 5.4, 2.6), black), { cast: false });
-  slot.position.set(-halfW + 0.5 - 0.03, 43, 0);
+  slot.position.set(-halfW + 0.5 - 0.15, 43, 0);
   const nub = add(capsule(0.85, 1.4, chrome));
   nub.scale.x = 0.8;
   nub.position.set(-halfW - 1.0 + 0.68, 43.9, 0);
@@ -174,33 +174,33 @@ export function createPhone({ screenCanvas }) {
   jack.position.set(-20.5, halfH - 1.5 + 0.02, 0);
   const jackRing = add(new THREE.Mesh(new THREE.RingGeometry(1.9, 2.7, 32), dark), { cast: false });
   jackRing.rotation.x = -Math.PI / 2;
-  jackRing.position.set(-20.5, halfH + 0.03, 0);
+  jackRing.position.set(-20.5, halfH + 0.15, 0);
 
   // SIM tray outline and its pinhole, top centre
   const sim = add(new THREE.Mesh(new THREE.BoxGeometry(15, 0.2, 0.25), dark), { cast: false });
-  sim.position.set(0, halfH + 0.02, 0);
+  sim.position.set(0, halfH + 0.12, 0);
   const pin = add(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.4, 16), black), { cast: false });
-  pin.position.set(6, halfH + 0.02, 0);
+  pin.position.set(6, halfH + 0.12, 0);
 
   // 30-pin dock connector and the grilles either side, bottom edge
   const dockFrame = add(new THREE.Mesh(new THREE.BoxGeometry(22.6, 0.3, 3.4), new THREE.MeshStandardMaterial({ color: 0x9a9da1, metalness: 0.8, roughness: 0.4 })), { cast: false });
-  dockFrame.position.set(0, -halfH + 0.12, 0);
+  dockFrame.position.set(0, -halfH + 0.05, 0);
   const dock = add(new THREE.Mesh(new THREE.BoxGeometry(21, 0.5, 2.2), black), { cast: false });
-  dock.position.set(0, -halfH + 0.2, 0);
+  dock.position.set(0, -halfH + 0.05, 0);
   const grille = grilleTexture();
   for (const x of [-15.5, 15.5]) {
     const g = add(new THREE.Mesh(new THREE.PlaneGeometry(9, 2.7), new THREE.MeshStandardMaterial({ map: grille, roughness: 0.7, metalness: 0.1 })), { cast: false });
     g.rotation.x = Math.PI / 2;
-    g.position.set(x, -halfH - 0.03, 0.4);
+    g.position.set(x, -halfH - 0.15, 0.4);
   }
 
   /* ---------- the camera on the back ---------- */
   const camRing = add(new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.5, 40), dark), { cast: false });
   camRing.rotation.x = Math.PI / 2;
-  camRing.position.set(21.5, 47.5, -halfD + 0.2);
+  camRing.position.set(21.5, 47.5, -halfD + 0.15);
   const lens = add(new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.4, 40), new THREE.MeshPhysicalMaterial({ color: 0x06101e, roughness: 0.05, metalness: 0, clearcoat: 1 })), { cast: false });
   lens.rotation.x = Math.PI / 2;
-  lens.position.set(21.5, 47.5, -halfD + 0.05);
+  lens.position.set(21.5, 47.5, -halfD - 0.05);
 
   const screenCenter = new THREE.Vector3(0, screenCY, halfD + 0.1);
   return { group, screen, screenTexture: screenTex, screenCenter, spec: S, buttons: { home, homeIcon, sleep } };

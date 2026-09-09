@@ -59,7 +59,8 @@ function main() {
   scene.environmentIntensity = 0.55;
   pmrem.dispose();
 
-  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 5, 30000);
+  // near plane at 20 mm: nothing gets closer, and depth precision across the room depends on it
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 20, 20000);
 
   /* ---------- the room and the phone on the desk ---------- */
   const room = createRoom({ scene });
