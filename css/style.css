@@ -20,7 +20,7 @@ body {
 }
 
 #stage { position: fixed; inset: 0; }
-#stage canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; touch-action: none; }
+#stage canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.6s ease; touch-action: none; }
 body.ready #stage canvas { opacity: 1; }
 
 #hud {
@@ -32,18 +32,9 @@ body.ready #stage canvas { opacity: 1; }
   transition: opacity 0.9s ease 0.35s, transform 0.9s ease 0.35s;
 }
 body.ready #hud { opacity: 1; transform: none; }
+body.close #hud { opacity: 0; transform: translateY(-6px); transition-delay: 0s; }
 .brand h1 { margin: 0 0 6px; font-size: clamp(20px, 2.4vw, 26px); font-weight: 600; letter-spacing: -0.01em; }
 .brand p { margin: 0; max-width: 36ch; font-size: 14px; line-height: 1.45; color: var(--ink-dim); text-wrap: pretty; }
-.actions { display: flex; gap: 8px; flex: none; pointer-events: auto; }
-.actions button {
-  font: 500 13px/1 var(--font); letter-spacing: 0.01em; color: var(--ink);
-  background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); border-radius: 999px;
-  padding: 10px 16px; cursor: pointer; backdrop-filter: blur(8px);
-  transition: background 0.2s, opacity 0.2s;
-}
-.actions button:hover { background: rgba(255, 255, 255, 0.13); }
-.actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.actions button[disabled] { opacity: 0.35; cursor: default; }
 
 .hint {
   position: fixed; left: 50%; bottom: clamp(18px, 4vh, 36px); transform: translateX(-50%);
@@ -63,10 +54,6 @@ body.ready .hint.hide { opacity: 0; }
   #hud { flex-direction: column; gap: 14px; }
   body.in-hand .brand { opacity: 0; transition: opacity 0.4s; }
   body.in-hand #hud { top: auto; bottom: clamp(52px, 9vh, 80px); }
-  body.in-hand .actions { justify-content: center; width: 100%; }
-  .brand p { font-size: 13px; }
-  .hint { letter-spacing: 0.08em; }
-}
-@media (prefers-reduced-motion: reduce) {
+  body.in-hand @media (prefers-reduced-motion: reduce) {
   #stage canvas, #hud, .hint { transition: none; }
 }

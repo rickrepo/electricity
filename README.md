@@ -1,26 +1,34 @@
 # Ricky's Phone
 
-A replica of a 2007-era iPhone, built entirely from three.js primitives and
-canvas-drawn surfaces. No 3D models, no image files, no build step.
+2007. The den of someone born in 1989, with a first-generation iPhone on the
+desk. Everything is built from three.js primitives and canvas-drawn
+surfaces: no 3D models, no image files, no build step.
 
-The phone sits on a stand in a small studio and boots when the page opens:
-black screen, the logo, then the lock screen. Drag to look around, scroll or
-pinch to zoom, use **Flip it over** for the back. Click or tap the phone to
-pick it up: the camera rolls to the phone's own up vector and fits the screen
-to your viewport, so on a phone it reads like a phone.
+You walk in and the phone boots. Drag to look around the room: the poster
+over the desk, the bed, two 1200s and a mixer along the wall with a crate of
+records under them, the CRT with the N64 and a controller on the rug, a nitro
+buggy on the floor and another on the shelf, a window with weather. Click
+anywhere to walk up to the desk, click the phone to pick it up (the camera
+rolls to the phone's own up vector and fits it to your viewport), click the
+bezel or press Esc to put it down, click away to step back. The turntables
+spin if you click them. There are no buttons on the page: the room is the
+interface.
 
-The software is drawn in the manner of the first iPhone OS, on a canvas:
+The phone runs software drawn in the manner of the first iPhone OS:
 
-- a lock screen with the clock, the planet wallpaper, and a working
-  "slide to unlock" (the text shimmers, the knob springs back);
-- a black home screen of sixteen glossy icons over a reflective dock,
-  laid out on the original 4 x 4 grid, with a live calendar and clock icon;
-- app screens with the blue-grey bar and pinstripes. Notes has a to-do list
-  and Clock has a real clock; the rest say so honestly.
+- a lock screen with the clock and "slide to unlock" over the dunk poster
+  (Settings > Wallpaper swaps in the planet);
+- a home screen of sixteen glossy icons over a reflective dock: Messages,
+  Calendar, Photos, Camera, N64, RC Cars, Maps, Weather, Clock, Calculator,
+  Notes, Settings, and Phone, Mail, Safari, Decks in the dock;
+- every app does something. Safari opens the About page. Messages and Mail
+  have threads and an inbox. Photos has a camera roll and Camera adds to it.
+  Calculator calculates, Phone dials, Decks has two turntables and a
+  crossfader, Settings toggles airplane mode, brightness, and the wallpaper.
 
 The physical buttons work: the home button goes home (or wakes the phone),
-the sleep button on the top edge puts it to sleep. Keyboard: **H** and
-**S** press them, **F** flips, **Esc** puts the phone down.
+the sleep button on the top edge puts it to sleep. Keyboard: **H** and **S**
+press them, **Esc** steps back.
 
 ## Running it locally
 
@@ -33,26 +41,38 @@ filesystem does not work because the site uses ES modules. WebGL is required.
 
 ## What is modelled
 
-Measurements are the real ones, in millimetres: a 115 x 61 x 11.6 mm body
-with 9 mm corners, a 3.5" 2:3 screen (320 x 480) set 15 mm below the top
-edge, a chrome bezel around black glass, a brushed aluminium back with the
-black plastic band across the bottom, and the details around the edge:
-earpiece, home button with its rounded-square icon, volume rocker, ring/silent
-switch, sleep button, headphone jack, SIM tray, 30-pin dock connector,
-speaker and microphone grilles, and the camera on the back.
+The phone: a 115 x 61 x 11.6 mm body with 9 mm corners, a 3.5" 2:3 screen
+(320 x 480) set 15 mm below the top edge, a chrome bezel around black glass,
+a brushed aluminium back with the black plastic band across the bottom, and
+the details around the edge: earpiece, home button with its rounded-square
+icon, volume rocker, ring/silent switch, sleep button, headphone jack, SIM
+tray, 30-pin dock connector, speaker and microphone grilles, and the camera.
+
+The room: 4 x 3.6 m, in millimetres, with the furniture placed by hand.
 
 ## Project layout
 
 ```
-index.html          the page: stage, two buttons, a hint
-css/style.css       the studio
-js/main.js          renderer, stand, lights, camera moves, pointer handling
+index.html          the page: stage, a title, a hint
+css/style.css       the page chrome
+js/main.js          renderer, camera moves (room, desk, in hand), pointer handling
+js/room.js          the den: furniture, poster, decks, CRT and N64, buggies, window
 js/phone.js         the phone (geometry and materials), SPEC has the measurements
-js/os.js            the software: boot, lock screen, home screen, app screens
-js/textures.js      canvas-drawn surfaces: brushed back, grilles, mesh, home icon
-vendor/three.min.js three.js + OrbitControls + RoomEnvironment, bundled
+js/os/core.js       the software: boot, lock, home, app runtime (scrolling, nav bars)
+js/os/apps.js       the sixteen apps
+js/os/icons.js      the home screen icons
+js/os/art.js        the poster, the planet, the turntable, the controller, the buggy
+js/os/ui.js         drawing helpers (bars, groups, toggles, bubbles)
+js/textures.js      the phone's surfaces
+vendor/three.min.js three.js + OrbitControls, bundled
 scripts/            npm run vendor rebuilds the bundle
 ```
+
+## Making it yours
+
+Every word about "Ricky" is placeholder text except the year. The About page
+lives at the top of `js/os/apps.js` (`ABOUT`), the messages, mail, calendar
+events, notes, and specs sit beside their apps in the same file.
 
 ## Updating three.js
 
