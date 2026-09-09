@@ -23,22 +23,18 @@ const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); retur
 /* Safari: the about page                                              */
 /* ================================================================== */
 const ABOUT = [
-  ['h1', 'Ricky'],
-  ['tag', 'Born 1989 · builds things · still has the posters'],
-  ['p', 'I was born in 1989, so I learned to read off cereal boxes and learned to type on a beige keyboard that weighed as much as I did. I have been taking things apart ever since. Most of them went back together.'],
-  ['h2', 'The dunk'],
-  ['p', 'A poster of Michael Jordan taking off from the free-throw line hung over my bed for ten years. It is the reason I still believe you can hang in the air a little longer if you commit.'],
-  ['h2', 'Two 1200s'],
-  ['p', 'Two Technics SL-1200s, a mixer with one good channel, and a milk crate of records. I was never great. I was loud, and I was on time.'],
-  ['h2', 'The N64'],
-  ['p', 'Four controllers, one couch, no memory card. It still boots on the first try, which is more than I can say for most of my code.'],
-  ['h2', 'Gas cars'],
-  ['p', 'Nitro buggies: tuned pipes, glow plugs, a smell that never leaves your hoodie. Top speed: enough. Parts replaced: all of them, twice.'],
-  ['h2', 'Now'],
-  ['p', 'I build small, strange, useful things for the web. This phone is one of them: no 3D models, no image files, every surface drawn from scratch.'],
-  ['h2', 'Say hello'],
-  ['link', 'hello@ricky.example'],
-  ['foot', '© 1989–2026 Ricky · rendered at 163 ppi'],
+  ['h1', "I'm Ricky."],
+  ['p', 'Toronto. Born in 1989. Thanks for picking up the phone.'],
+  ['h2', 'Also'],
+  ['link', 'autismwaitlist.com'],
+];
+
+// Safari's pages. The first is drawn here; the second is a live web page, laid
+// over the screen while the phone is in hand. Only pages listed here can be
+// reached: the address field takes no typing.
+const PAGES = [
+  { title: "I'm Ricky", url: 'ricky.example', live: false },
+  { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true },
 ];
 
 const safari = {
@@ -52,45 +48,52 @@ const safari = {
     for (const [type, value] of ABOUT) {
       const b = { type, value, y };
       if (type === 'h1') { b.h = 40; }
-      else if (type === 'tag') { m.font = `13px ${FONT}`; b.lines = wrapLines(m, value, WIDTH); b.h = b.lines.length * 17 + 12; }
       else if (type === 'p') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, value, WIDTH); b.h = b.lines.length * 21 + 14; }
       else if (type === 'h2') { b.y += 8; b.h = 40; }
       else if (type === 'link') { b.h = 34; }
-      else if (type === 'foot') { b.y += 10; b.h = 44; }
       blocks.push(b);
       y = b.y + b.h;
     }
-    return { blocks, height: y + 8, X, WIDTH };
+    return { blocks, height: y + 8, X, WIDTH, page: 0 };
   },
   bar() { return { title: '' }; },
-  height(s) { return s.height; },
+  height(s) { return PAGES[s.page].live ? CONTENT_H - 44 : s.height; },
+  site(s) { return PAGES[s.page].live ? { url: PAGES[s.page].url, rect: { x: 0, y: CONTENT_Y, w: W, h: H - CONTENT_Y - 44 } } : null; },
   draw(ctx, s) {
+    if (PAGES[s.page].live) {
+      // a plain page stands in until the live one is laid over it
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, W, CONTENT_H);
+      ctx.fillStyle = '#eef0f3';
+      ctx.fillRect(0, 0, W, 44);
+      for (let i = 0; i < 4; i++) { ctx.fillStyle = i ? '#e6e8ec' : '#d9dce2'; ctx.fillRect(16, 66 + i * 22, i ? 200 - i * 30 : 140, 10); }
+      return;
+    }
     for (const b of s.blocks) {
       const { type, value, y } = b;
       if (type === 'h1') text(ctx, value, s.X, y + 30, { font: `bold 30px ${FONT}`, color: '#111' });
-      else if (type === 'tag') b.lines.forEach((l, i) => text(ctx, l, s.X, y + 14 + i * 17, { font: `13px ${FONT}`, color: '#4c566c' }));
       else if (type === 'p') b.lines.forEach((l, i) => text(ctx, l, s.X, y + 16 + i * 21, { font: `15px ${FONT}`, color: '#222' }));
       else if (type === 'h2') { text(ctx, value, s.X, y + 26, { font: `bold 19px ${FONT}`, color: '#111' }); ctx.fillStyle = '#3a7fdb'; ctx.fillRect(s.X, y + 32, 28, 3); }
       else if (type === 'link') { text(ctx, value, s.X, y + 20, { font: `15px ${FONT}`, color: '#1a5cc8' }); ctx.fillStyle = '#1a5cc8'; ctx.fillRect(s.X, y + 23, ctx.measureText(value).width, 1); b.hit = { x: s.X, y: y + 4, w: 200, h: 26 }; }
-      else if (type === 'foot') text(ctx, value, s.X, y + 22, { font: `12px ${FONT}`, color: '#8a8f99' });
     }
   },
-  overlay(ctx, s, os) {
+  overlay(ctx, s) {
+    const page = PAGES[s.page];
     // top: page title and the address field
-    text(ctx, 'About Ricky', W / 2, 32, { font: `bold 12px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
+    text(ctx, page.title, W / 2, 32, { font: `bold 12px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
     ctx.fillStyle = '#fff';
     roundRect(ctx, 8, 38, W - 16, 22, 5);
     ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.35)';
     ctx.lineWidth = 1;
     ctx.stroke();
-    text(ctx, 'http://ricky.example/about', 16, 50, { font: `13px ${FONT}`, color: '#333', baseline: 'middle' });
+    text(ctx, page.url.replace(/^https?:\/\//, ''), 16, 50, { font: `13px ${FONT}`, color: '#333', baseline: 'middle' });
     ctx.strokeStyle = '#6a7d99';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(W - 20, 49, 5, 0.4, Math.PI * 1.7); ctx.stroke();
     ctx.fillStyle = '#6a7d99';
     ctx.beginPath(); ctx.moveTo(W - 15, 42); ctx.lineTo(W - 13, 48); ctx.lineTo(W - 19, 47); ctx.closePath(); ctx.fill();
-    // bottom toolbar
+    // bottom toolbar: back, forward, bookmarks, pages
     const y = H - 44;
     const g = ctx.createLinearGradient(0, y, 0, H);
     g.addColorStop(0, '#b9c8de'); g.addColorStop(0.5, '#8ea4c2'); g.addColorStop(0.5001, '#7c93b3'); g.addColorStop(1, '#6a83a6');
@@ -98,12 +101,12 @@ const safari = {
     ctx.fillRect(0, y, W, 44);
     ctx.fillStyle = '#2d3e58';
     ctx.fillRect(0, y, W, 1);
-    ctx.strokeStyle = '#fff';
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    ctx.strokeStyle = s.page > 0 ? '#fff' : 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(44, y + 14); ctx.lineTo(34, y + 22); ctx.lineTo(44, y + 30); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.strokeStyle = s.page < PAGES.length - 1 ? '#fff' : 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(110, y + 14); ctx.lineTo(120, y + 22); ctx.lineTo(110, y + 30); ctx.stroke();
     ctx.fillStyle = '#fff';
     ctx.fillRect(190, y + 13, 18, 20);
@@ -116,11 +119,22 @@ const safari = {
     ctx.fillStyle = '#fff';
     ctx.font = `bold 8px ${FONT}`;
     ctx.textAlign = 'center';
-    ctx.fillText('1', 278.5, y + 22.5);
+    ctx.fillText(String(PAGES.length), 278.5, y + 22.5);
   },
-  tap(x, y, s, os) {
+  tap(x, y, s) {
     const link = s.blocks.find((b) => b.type === 'link');
-    if (link?.hit && inRect(link.hit, x, y)) os.open('mail');
+    if (!PAGES[s.page].live && link?.hit && inRect(link.hit, x, y)) { s.page = 1; s.scroll = 0; }
+  },
+  tabTap(x, y, s) {
+    if (y >= H - 44) {
+      // back and forward step through the pages; the pages button cycles them
+      if (x < 70 && s.page > 0) { s.page--; s.scroll = 0; }
+      else if (x >= 80 && x < 150 && s.page < PAGES.length - 1) { s.page++; s.scroll = 0; }
+      else if (x >= 240) { s.page = (s.page + 1) % PAGES.length; s.scroll = 0; }
+      return;
+    }
+    // the address of a live page opens it in a tab of its own, for browsers that will not frame it
+    if (y >= 36 && y < 62 && PAGES[s.page].live) window.open(PAGES[s.page].url, '_blank', 'noopener');
   },
 };
 
@@ -462,11 +476,17 @@ const maps = {
     road([[0, 210], [320, 190]], 8);
     road([[0, 60], [200, 50]], 6);
     const label = (t, x, y, a = 0) => { ctx.save(); ctx.translate(x, y); ctx.rotate(a); text(ctx, t, 0, 0, { font: `bold 9px ${FONT}`, color: '#6b6560', align: 'center', baseline: 'middle' }); ctx.restore(); };
-    label('MAIN ST', 110, 112, -0.06);
-    label('1989 AVE', 65, 160, 1.53);
-    label('RIVER RD', 200, 200, -0.06);
+    label('QUEEN ST W', 110, 112, -0.06);
+    label('BATHURST ST', 65, 160, 1.53);
+    label('KING ST W', 200, 200, -0.06);
     label('THE PARK', 262, 90);
-    label('RIVER', 100, 330, -0.35);
+    label('LAKE ONTARIO', 100, 330, -0.35);
+    // the tower on the shore
+    ctx.fillStyle = '#7d8590';
+    ctx.fillRect(268, 262, 3, 40);
+    ctx.beginPath(); ctx.ellipse(269.5, 276, 9, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(266, 282, 7, 3);
+    ctx.fillRect(268.5, 250, 2, 12);
     const pin = (x, y, t) => {
       ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(x, y + 2, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#e03a2f'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 8, y - 16); ctx.arc(x, y - 20, 9, Math.PI * 0.85, Math.PI * 2.15); ctx.closePath(); ctx.fill();
@@ -476,8 +496,8 @@ const maps = {
       ctx.fillStyle = '#fff'; roundRect(ctx, x - w / 2, y - 52, w, 22, 5); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.stroke();
       text(ctx, t, x, y - 41, { font: `bold 12px ${FONT}`, align: 'center', baseline: 'middle' });
     };
-    pin(112, 190, "Ricky's garage");
-    pin(236, 296, 'The track');
+    pin(112, 190, "Ricky's place");
+    pin(236, 236, 'Toronto');
     const pulse = (now / 1400) % 1;
     ctx.fillStyle = `rgba(58,127,219,${0.35 * (1 - pulse)})`;
     ctx.beginPath(); ctx.arc(150, 240, 8 + pulse * 22, 0, Math.PI * 2); ctx.fill();
@@ -489,7 +509,7 @@ const maps = {
 /* ================================================================== */
 /* Weather                                                             */
 /* ================================================================== */
-const FORECAST = [[75, 58, 'sun'], [77, 60, 'sun'], [71, 57, 'cloud'], [64, 52, 'rain'], [69, 55, 'cloud']];
+const FORECAST = [[24, 15, 'sun'], [26, 17, 'sun'], [21, 14, 'cloud'], [17, 11, 'rain'], [22, 13, 'cloud']];
 
 function weatherGlyph(ctx, kind, x, y, s) {
   if (kind === 'sun') {
@@ -514,9 +534,9 @@ const weather = {
     g.addColorStop(0, '#5aa0e6'); g.addColorStop(1, '#1e4f8f');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, CONTENT_H);
-    text(ctx, 'Home', 16, 34, { font: `bold 22px ${FONT}`, color: '#fff' });
+    text(ctx, 'Toronto', 16, 34, { font: `bold 22px ${FONT}`, color: '#fff' });
     text(ctx, `${FORECAST[0][0] - 3}°`, 16, 100, { font: `200 64px ${FONT}`, color: '#fff' });
-    text(ctx, 'Sunny, no wind, race weather', 16, 124, { font: `15px ${FONT}`, color: 'rgba(255,255,255,0.9)' });
+    text(ctx, 'Sunny, a light wind off the lake', 16, 124, { font: `15px ${FONT}`, color: 'rgba(255,255,255,0.9)' });
     text(ctx, `H: ${FORECAST[0][0]}°   L: ${FORECAST[0][1]}°`, 16, 144, { font: `bold 14px ${FONT}`, color: 'rgba(255,255,255,0.85)' });
     weatherGlyph(ctx, 'sun', 262, 80, 60);
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -864,68 +884,6 @@ const stocks = {
 };
 
 /* ================================================================== */
-/* Videos                                                              */
-/* ================================================================== */
-const VIDEOS = [['Skateboarding dog', '0:48', '1,204,331 views', '#5aa0e6'], ['Mentos and cola, again', '1:12', '844,902 views', '#c8322b'], ['Grandma vs. the printer', '2:05', '312,118 views', '#7a5a3c'], ['Sunrise, sped up', '0:59', '98,004 views', '#f2a33a'], ['A cat plays the keyboard', '0:55', '4,120,776 views', '#3aa64a']];
-const videos = {
-  id: 'videos', name: 'Videos', top: '#e4e4e4', bottom: '#9a9a9a', glyph: 'videos',
-  init() { return { playing: -1, startedAt: 0, paused: false, pausedAt: 0 }; },
-  animating(s) { return s.playing >= 0 && !s.paused; },
-  bar(s) { return s.playing < 0 ? { title: 'Featured' } : { title: VIDEOS[s.playing][0], back: 'Featured' }; },
-  back(s) { if (s.playing < 0) return false; s.playing = -1; return true; },
-  height(s) { return s.playing < 0 ? VIDEOS.length * 70 : CONTENT_H; },
-  draw(ctx, s, os, now) {
-    if (s.playing < 0) {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, W, 800);
-      VIDEOS.forEach(([title, len, views, color], i) => {
-        const y = i * 70;
-        ctx.fillStyle = color;
-        roundRect(ctx, 10, y + 8, 80, 54, 4);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.beginPath(); ctx.moveTo(44, y + 25); ctx.lineTo(60, y + 35); ctx.lineTo(44, y + 45); ctx.closePath(); ctx.fill();
-        text(ctx, title, 102, y + 28, { font: `bold 15px ${FONT}` });
-        text(ctx, `${len}  ·  ${views}`, 102, y + 48, { font: `12px ${FONT}`, color: '#6b6f78' });
-        chevron(ctx, W - 12, y + 35);
-        separator(ctx, 102, y + 69, W - 102);
-      });
-      return;
-    }
-    const [title, len, , color] = VIDEOS[s.playing];
-    const total = parseInt(len.split(':')[0], 10) * 60 + parseInt(len.split(':')[1], 10);
-    const elapsed = Math.min(total, ((s.paused ? s.pausedAt : now) - s.startedAt) / 1000);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, CONTENT_H);
-    const g = ctx.createLinearGradient(0, 40, 0, 300);
-    g.addColorStop(0, color); g.addColorStop(1, '#111');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 40, W, 240);
-    for (let i = 0; i < 3; i++) { ctx.fillStyle = `rgba(255,255,255,${0.08 + 0.05 * Math.sin(now / 300 + i)})`; ctx.beginPath(); ctx.arc(60 + i * 100 + Math.sin(now / 700 + i) * 20, 160 + Math.cos(now / 900 + i) * 40, 30 + i * 8, 0, Math.PI * 2); ctx.fill(); }
-    text(ctx, title, W / 2, 150, { font: `bold 18px ${FONT}`, color: 'rgba(255,255,255,0.9)', align: 'center' });
-    text(ctx, s.paused ? 'paused' : elapsed >= total ? 'the end' : 'playing', W / 2, 176, { font: `13px ${FONT}`, color: 'rgba(255,255,255,0.7)', align: 'center' });
-    ctx.fillStyle = '#333';
-    roundRect(ctx, 20, 320, W - 40, 6, 3); ctx.fill();
-    ctx.fillStyle = '#3a7fdb';
-    roundRect(ctx, 20, 320, (W - 40) * (elapsed / total), 6, 3); ctx.fill();
-    const mm = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
-    text(ctx, mm(elapsed), 20, 344, { font: `12px ${FONT}`, color: '#bbb' });
-    text(ctx, `-${mm(total - elapsed)}`, W - 20, 344, { font: `12px ${FONT}`, color: '#bbb', align: 'right' });
-    ctx.fillStyle = '#e9ecf1';
-    if (s.paused || elapsed >= total) { ctx.beginPath(); ctx.moveTo(150, 372); ctx.lineTo(176, 388); ctx.lineTo(150, 404); ctx.closePath(); ctx.fill(); }
-    else { ctx.fillRect(148, 372, 9, 32); ctx.fillRect(163, 372, 9, 32); }
-    s.hits = { play: { x: 120, y: 356, w: 80, h: 64 } };
-  },
-  tap(x, y, s, os, now) {
-    if (s.playing < 0) { const i = Math.floor(y / 70); if (i >= 0 && i < VIDEOS.length) { s.playing = i; s.startedAt = now; s.paused = false; s.scroll = 0; } return; }
-    if (inRect(s.hits?.play, x, y)) {
-      if (s.paused) { s.startedAt += now - s.pausedAt; s.paused = false; }
-      else { s.paused = true; s.pausedAt = now; }
-    }
-  },
-};
-
-/* ================================================================== */
 /* Music, the way the iPod app did it                                  */
 /* ================================================================== */
 const SONGS = [['Summer of 89', 'The Cassettes', 214, '#c8322b'], ['Dial Tone', 'Modem Kids', 187, '#3a7fdb'], ['Late Bus Home', 'Paper Route', 241, '#f2a33a'], ['Parking Lot Lights', 'The Cassettes', 198, '#3aa64a'], ['Static on Channel 3', 'Modem Kids', 176, '#7a4fb3'], ['Cul-de-sac', 'Paper Route', 223, '#5aa0e6']];
@@ -1016,7 +974,7 @@ const music = {
 // the tab bar sits outside the scroll area, so taps on it arrive through the "bar" path of the core
 music.tabTap = (x, y, s) => { if (y >= H - 44) { s.tab = Math.floor(x / (W / 5)); s.view = 'list'; s.scroll = 0; return true; } return false; };
 
-export const APPS = [messages, calendar, photos, camera, videos, stocks, maps, weather, clock, calculator, notes, settings];
+export const APPS = [messages, calendar, photos, camera, stocks, maps, weather, clock, calculator, notes, settings];
 export const DOCK = [phone, mail, safari, music];
 export const ALL = [...APPS, ...DOCK];
 export { PHOTO_KINDS };

@@ -6,21 +6,16 @@ surfaces: no 3D models, no build step, and no image files except the one
 photo you choose for the poster.
 
 You walk in at dusk and the phone boots. Drag to look around the room: the
-poster over the desk, the bed, two 1200s and a mixer along the wall with two
-crates of records in front of them, the CRT with the N64 and a controller on
-the rug, a nitro buggy on the floor with its transmitter beside it and
-another buggy on the shelf, the window with the curtains, a chair, a clock
-that keeps real time, a door, an architect's lamp on the desk. Click anywhere
-to walk up to the desk, click the phone to pick it up (the camera rolls to
-the phone's own up vector and fits it to your viewport), click the bezel or
-press Esc to put it down, click away to step back. There are no buttons or
-words on the page: the room is the interface.
-
-Click the decks or the crates to go over to them. Click a record and it
-lifts out of its crate; click a turntable to put it on (the sleeve goes to
-the wall behind the deck and the one that was playing goes back in its
-crate), or click anywhere else to put it back. Click a turntable with empty
-hands to start and stop it.
+poster over the desk, two 1200s and a mixer along the wall with two crates
+of records in front of them, the CRT with the N64 and a controller on the
+rug, a nitro buggy on the floor with its transmitter beside it and another
+buggy on the shelf, the window with the curtains, a chair, a clock that
+keeps real time, a door, an architect's lamp on the desk. Click anywhere to
+walk up to the desk, click the phone to pick it up (the camera rolls to the
+phone's own up vector and fits it to your viewport), click the bezel or
+press Esc to put it down, click away to step back. Click a turntable to
+start and stop it. There are no buttons or words on the page: the room is
+the interface.
 
 Click the buggy or its transmitter to pick the transmitter up and drive:
 the arrow keys or WASD steer and throttle, or drag anywhere (up for
@@ -62,14 +57,17 @@ The phone runs software drawn in the manner of the first iPhone OS:
 
 - a lock screen with the clock and "slide to unlock" over the planet
   (Settings > Wallpaper swaps in ripples);
-- a home screen of sixteen glossy icons over a reflective dock, the original
-  set: Messages, Calendar, Photos, Camera, Videos, Stocks, Maps, Weather,
-  Clock, Calculator, Notes, Settings, and Phone, Mail, Safari, iPod;
-- every app does something. Safari opens the About page. Messages and Mail
-  have threads and an inbox. Photos has a camera roll and Camera adds to it
-  (it looks at the room). Stocks charts, Videos plays, iPod plays, Calculator
-  calculates, Phone dials, Settings toggles airplane mode, brightness, and the
-  wallpaper.
+- a home screen of fifteen glossy icons over a reflective dock: Messages,
+  Calendar, Photos, Camera, Stocks, Maps, Weather, Clock, Calculator, Notes,
+  Settings, and Phone, Mail, Safari, iPod;
+- every app does something. Safari has two pages: a line about Ricky, and
+  autismwaitlist.com, which is the real site, live, laid over the screen
+  while the phone is in hand (the address opens it in a tab of its own on
+  browsers that will not frame it; only the pages listed in the code can be
+  reached). Messages and Mail have threads and an inbox. Photos has a camera
+  roll and Camera adds to it (it looks at the room). Maps and Weather are
+  Toronto. Stocks charts, iPod plays, Calculator calculates, Phone dials,
+  Settings toggles airplane mode, brightness, and the wallpaper.
 
 The personal things live in the room, not on the phone.
 

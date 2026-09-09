@@ -98,8 +98,9 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   }
 
   /* ---------- lock screen ---------- */
-  function drawLock(now) {
+  function drawLock(now, chrome = true) {
     ctx.drawImage(wallpapers[settings.wallpaper] || wallpapers.earth, 0, 0, W, H);
+    if (!chrome) return;
     statusBar();
     const p = clockText();
     const date = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
@@ -182,7 +183,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   }
 
   /* ---------- home screen ---------- */
-  const iconRect = (i) => (i < 12 ? { x: COLS[i % 4], y: ROWS[Math.floor(i / 4)] } : { x: COLS[i - 12], y: DOCK_ICON_Y });
+  // the grid holds APPS, four to a row; the dock holds DOCK
+  const iconRect = (i) => (i < APPS.length ? { x: COLS[i % 4], y: ROWS[Math.floor(i / 4)] } : { x: COLS[i - APPS.length], y: DOCK_ICON_Y });
   const iconAt = (x, y) => {
     for (let i = 0; i < ALL.length; i++) {
       const r = iconRect(i);
@@ -216,7 +218,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       const r = iconRect(i);
       const sx = i * (atlas.cell + atlas.pad);
       c.drawImage(atlas.canvas, sx, 0, atlas.cell, atlas.cell, r.x, r.y, ICON, ICON);
-      if (i < 12) {
+      if (i < APPS.length) {
         c.fillStyle = '#fff';
         c.shadowColor = 'rgba(0,0,0,0.8)';
         c.shadowBlur = 2;
@@ -337,11 +339,20 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         drawLock(now);
         break;
       case 'unlocking': {
+        // the clock and the slider are gone the moment the slide completes; only
+        // the wallpaper fades, while the home screen settles in from a touch larger
+        const k = easeOut(clamp(t / 320, 0, 1));
+        const z = 1 + 0.06 * (1 - k);
+        ctx.save();
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(z, z);
+        ctx.translate(-W / 2, -H / 2);
         drawHome();
-        const k = clamp(t / 350, 0, 1);
+        ctx.restore();
         ctx.globalAlpha = 1 - k;
-        drawLock(now);
+        drawLock(now, false);
         ctx.globalAlpha = 1;
+        statusBar();
         if (k >= 1) { st.knob = 0; setMode('home', now); }
         break;
       }
@@ -487,6 +498,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     get mode() { return st.mode; },
     get app() { return st.app?.id ?? null; },
     get scroll() { return st.app ? appState(st.app).scroll : 0; },
+    // the live web page Safari is on, if any: { url, rect } in screen coordinates
+    get site() { return st.mode === 'app' && st.app?.site ? st.app.site(appState(st.app)) : null; },
     onMode(fn) { st.listeners.add(fn); },
     // `interval` is the shortest gap between redraws: 0 in hand, longer far away.
     needsRedraw(now, interval = 0) {

@@ -1,9 +1,9 @@
 // Ricky's phone, 2007. You are standing in the den: the poster over the
-// desk, two 1200s by the bed with crates of records, the N64 under the CRT,
-// a nitro buggy on the rug with its transmitter. The phone on the desk boots
-// when you walk in. Click anywhere to walk up to the desk, click the phone to
-// pick it up, slide to unlock. Click the decks to go through the crates and
-// put a record on; click the buggy or its transmitter to drive it around.
+// desk, two 1200s with crates of records, the N64 under the CRT, a nitro
+// buggy on the rug with its transmitter. The phone on the desk boots when
+// you walk in. Click anywhere to walk up to the desk, click the phone to
+// pick it up, slide to unlock. Click a deck to start it; click the buggy or
+// its transmitter to drive it around. Safari shows the other site live.
 import * as THREE from '../vendor/three.min.js';
 import { OrbitControls, RoundedBoxGeometry } from '../vendor/three.min.js';
 import { createPhone, SPEC } from './phone.js';
@@ -120,7 +120,6 @@ async function main() {
   const POSES = {
     room: { target: new THREE.Vector3(-100, 850, 250), distance: 2300, polar: 1.15, azimuth: 0.2, limits: { min: 700, max: 2300, polar: [0.55, 1.5], azimuth: [-0.75, 0.75] } },
     desk: { get target() { return phoneCenter(); }, distance: 430, polar: 1.25, azimuth: 0.15, limits: { min: 240, max: 1500, polar: [0.35, 1.55], azimuth: [-1.05, 1.05] } },
-    decks: { target: new THREE.Vector3(-1420, 470, 190), distance: 1550, polar: 1.0, azimuth: 1.2, limits: { min: 900, max: 2100, polar: [0.65, 1.35], azimuth: [0.75, 1.75] } },
   };
   const applyLimits = (pose) => {
     controls.minDistance = pose.limits.min;
@@ -132,7 +131,7 @@ async function main() {
   };
   const posePosition = (pose, azimuth = pose.azimuth, polar = pose.polar) => new THREE.Vector3().setFromSphericalCoords(pose.distance, polar, azimuth).add(pose.target);
 
-  let state = 'moving'; // room | desk | up | decks | drive | moving
+  let state = 'moving'; // room | desk | up | drive | moving
   let idleSince = performance.now();
   const look = new THREE.Vector3();
   const saved = { pos: new THREE.Vector3(), target: new THREE.Vector3(), state: 'desk' };
@@ -173,20 +172,12 @@ async function main() {
     flyTo({ pos: posePosition(pose, THREE.MathUtils.clamp(a.theta, -0.9, 0.9), THREE.MathUtils.clamp(a.phi, 0.6, 1.45)), target, up: WORLD_UP.clone() }, 1500, () => settle('desk'));
   };
   const stepBack = () => {
-    if (state !== 'desk' && state !== 'decks') return;
-    if (room.held) room.returnRecord();
+    if (state !== 'desk') return;
     const a = currentAngles();
     const pose = POSES.room;
     state = 'moving';
     setHint('');
     flyTo({ pos: posePosition(pose, THREE.MathUtils.clamp(a.theta, -0.8, 0.8), 1.15), target: pose.target.clone(), up: WORLD_UP.clone() }, 1400, () => settle('room'));
-  };
-  // over to the decks: the crates in front, both turntables behind
-  const goDecks = () => {
-    if (state !== 'room' && state !== 'desk') return;
-    const pose = POSES.decks;
-    state = 'moving';
-    flyTo({ pos: posePosition(pose), target: pose.target.clone(), up: WORLD_UP.clone() }, 1500, () => settle('decks'));
   };
   /* ---------- the buggy: pick up the transmitter and drive ---------- */
   const keys = new Set();
@@ -197,8 +188,7 @@ async function main() {
     return { pos, target: c.group.position.clone().add(new THREE.Vector3(0, 90, 0)) };
   };
   const drive = () => {
-    if (state !== 'room' && state !== 'desk' && state !== 'decks') return;
-    if (room.held) room.returnRecord();
+    if (state !== 'room' && state !== 'desk') return;
     state = 'moving';
     room.remote.visible = false;
     document.body.classList.add('close', 'driving');
@@ -273,6 +263,34 @@ async function main() {
     flyTo(back, 850, () => settle(saved.state));
   };
 
+  /* ---------- the other site: a real page inside Safari while the phone is in hand ---------- */
+  // Safari's second page is a live web page. The screen is a flat rectangle
+  // facing the camera when the phone is in hand, so a frame laid over the
+  // page area of the screen lines up with it exactly.
+  const site = document.createElement('iframe');
+  site.id = 'site';
+  site.hidden = true;
+  site.title = 'Web page';
+  site.referrerPolicy = 'no-referrer';
+  document.body.append(site);
+  const siteCorner = new THREE.Vector3();
+  const placeSite = () => {
+    const page = state === 'up' && !move.active ? os.site : null;
+    if (!page) { if (!site.hidden) site.hidden = true; return; }
+    if (site.dataset.url !== page.url) { site.dataset.url = page.url; site.src = page.url; }
+    const toCss = (px, py) => {
+      siteCorner.set((px / os.width - 0.5) * SPEC.screen.width, (0.5 - py / os.height) * SPEC.screen.height, 0);
+      phone.screen.localToWorld(siteCorner).project(camera);
+      return { x: ((siteCorner.x + 1) / 2) * innerWidth, y: ((1 - siteCorner.y) / 2) * innerHeight };
+    };
+    const a = toCss(page.rect.x, page.rect.y), b = toCss(page.rect.x + page.rect.w, page.rect.y + page.rect.h);
+    site.style.left = `${Math.min(a.x, b.x)}px`;
+    site.style.top = `${Math.min(a.y, b.y)}px`;
+    site.style.width = `${Math.abs(b.x - a.x)}px`;
+    site.style.height = `${Math.abs(b.y - a.y)}px`;
+    if (site.hidden) site.hidden = false;
+  };
+
   /* ---------- pointer: walk, pick up, press buttons, use the screen ---------- */
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -287,8 +305,6 @@ async function main() {
   const hitsPhone = (e) => { setRay(e); return raycaster.intersectObject(phone.group, true).length > 0; };
   const deckAt = (e) => { setRay(e); for (const it of room.interactives) if (raycaster.intersectObjects(it.meshes, false).length) return it; return null; };
   const hitOf = (e, meshes) => { setRay(e); return raycaster.intersectObjects(meshes, false)[0] || null; };
-  const recordAt = (e) => { const h = hitOf(e, room.records.filter((r) => r.where !== 'deck').map((r) => r.mesh)); return h ? room.records.find((r) => r.mesh === h.object) : null; };
-  const crateAt = (e) => !!hitOf(e, room.crates.flatMap((c) => [c.mesh, c.hit]));
   const carAt = (e) => !!hitOf(e, [...room.car.meshes, ...room.remote.meshes]);
   const screenPoint = (e, anywhere = false) => {
     setRay(e);
@@ -335,7 +351,7 @@ async function main() {
     // dragging steers and drives: up for throttle, sideways to steer
     if (joy) { room.car.input(THREE.MathUtils.clamp((joy.y - e.clientY) / 110, -1, 1), THREE.MathUtils.clamp((joy.x - e.clientX) / 110, -1, 1)); return; }
     if (state === 'drive') return;
-    if (!coarse && !down && !move.active) el.style.cursor = buttonAt(e) || hitsPhone(e) || deckAt(e) || recordAt(e) || crateAt(e) || carAt(e) ? 'pointer' : '';
+    if (!coarse && !down && !move.active) el.style.cursor = buttonAt(e) || hitsPhone(e) || deckAt(e) || carAt(e) ? 'pointer' : '';
   });
   const endPointer = (e) => {
     if (screenGrab) {
@@ -357,16 +373,8 @@ async function main() {
     if (state === 'up') { if (!screenPoint(e)) putDown(); return; }
     if (hitsPhone(e) && (state === 'room' || state === 'desk')) return pickUp();
     if (carAt(e)) return drive();
-    if (state === 'decks') {
-      // a record lifts out of its crate, goes onto the deck you click, or back where it came from
-      const rec = recordAt(e);
-      if (rec) { if (room.held === rec) room.returnRecord(); else if (!room.held) room.takeRecord(rec, camera.position); return; }
-      const deck = deckAt(e);
-      if (deck) { if (room.held) room.placeRecord(deck.deck); else deck.action(); return; }
-      if (room.held) return room.returnRecord();
-      return stepBack();
-    }
-    if (deckAt(e) || crateAt(e) || recordAt(e)) return goDecks();
+    const deck = deckAt(e);
+    if (deck) return deck.action();
     if (state === 'room') walkUp();
     else if (state === 'desk') stepBack();
   };
@@ -381,7 +389,7 @@ async function main() {
   const DRIVE_KEYS = { ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right' };
   addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === 'Escape') { if (state === 'up') putDown(); else if (state === 'desk' || state === 'decks') stepBack(); else if (state === 'drive') park(); }
+    if (e.key === 'Escape') { if (state === 'up') putDown(); else if (state === 'desk') stepBack(); else if (state === 'drive') park(); }
     if (state === 'drive') { if (DRIVE_KEYS[e.key]) { keys.add(DRIVE_KEYS[e.key]); e.preventDefault(); } return; }
     if (e.key === 'h' || e.key === 'H') pressButton('home');
     if (e.key === 's' || e.key === 'S') pressButton('sleep');
@@ -462,7 +470,7 @@ async function main() {
       camera.position.lerp(p.pos, k);
       look.lerp(p.target, k);
       camera.lookAt(look);
-    } else if (state === 'room' || state === 'desk' || state === 'decks') {
+    } else if (state === 'room' || state === 'desk') {
       if (state === 'room' && !controls.autoRotate && !reduced && !down && now - idleSince > 12000) controls.autoRotate = true;
       controls.update(dt);
       look.copy(controls.target);
@@ -487,6 +495,7 @@ async function main() {
     if (!lateShadow && now - started > 2500) { lateShadow = true; shadowFrames = 1; }
     if (shadowFrames > 0) { renderer.shadowMap.needsUpdate = true; shadowFrames--; }
     renderer.render(scene, camera);
+    placeSite();
     pace(now, frame);
     if (fpsBox) {
       fpsFrames++;
@@ -517,7 +526,6 @@ async function main() {
     () => ({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP }),
     () => ({ pos: posePosition(POSES.desk), target: POSES.desk.target, up: WORLD_UP }),
     () => handPose(),
-    () => ({ pos: posePosition(POSES.decks), target: POSES.decks.target.clone(), up: WORLD_UP }),
     () => ({ ...chasePose(), up: WORLD_UP }),
   ];
   for (let i = 0; i < views.length; i++) {
@@ -544,7 +552,7 @@ async function main() {
   setTimeout(() => ui.loading?.remove(), 900);
   tick();
 
-  window.ricky = { scene, camera, controls, renderer, phone, os, room, pickUp, putDown, walkUp, stepBack, goDecks, drive, park, pressButton, get state() { return state; } };
+  window.ricky = { scene, camera, controls, renderer, phone, os, room, pickUp, putDown, walkUp, stepBack, drive, park, pressButton, get state() { return state; } };
 }
 
 main().catch((err) => { console.error(err); ui.loading?.remove(); ui.fail.hidden = false; ui.fail.querySelector('p').textContent = `Something went wrong while drawing the room: ${err.message || err}`; });

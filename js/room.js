@@ -1,10 +1,10 @@
 // The room: a den for someone born in 1989, at dusk, in millimetres.
 // A desk against the back wall with the phone on it and the poster above,
-// a bed, two direct-drive turntables and a mixer with two crates of records
-// (pull one out and drop it on a deck), a CRT running a racing game with the
-// N64 under it, a nitro buggy on the rug with its transmitter beside it (pick
-// the transmitter up and drive), another buggy on the shelf, curtains, a
-// chair, a clock, a door, and an architect's lamp on the desk.
+// two direct-drive turntables and a mixer with two crates of records in
+// front, a CRT running a racing game with the N64 under it, a nitro buggy on
+// the rug with its transmitter beside it (pick the transmitter up and drive),
+// another buggy on the shelf, curtains, a chair, a clock, a door, and an
+// architect's lamp on the desk.
 // Boxes, cylinders, and canvas-drawn textures; the light does the rest.
 import * as THREE from '../vendor/three.min.js';
 import { RoundedBoxGeometry, RectAreaLightUniformsLib, mergeGeometries } from '../vendor/three.min.js';
@@ -538,19 +538,6 @@ export function createRoom({ scene }) {
   group.add(clockRing);
   let clockMinute = -1;
 
-  /* the bed, front-left, with sneakers beside it */
-  const bedX = -ROOM.halfW + 520, bedZ = ROOM.front - 1040;
-  rbox(1040, 180, 2040, 10, mats.darkWood, { x: bedX, y: 190, z: bedZ });
-  rbox(1000, 260, 2000, 70, mats.sheet, { x: bedX, y: 410, z: bedZ });
-  rbox(1020, 90, 1300, 40, mats.plaid, { x: bedX, y: 575, z: bedZ - 330 });
-  rbox(520, 150, 340, 60, mats.sheet, { x: bedX, y: 600, z: ROOM.front - 250, ry: 0.06 });
-  rbox(1040, 620, 60, 12, mats.darkWood, { x: bedX, y: 500, z: ROOM.front - 50 });
-  shadowBlob(1400, 2400, bedX, 0, bedZ);
-  for (const [dx, dz, ry, col] of [[620, 260, 0.2, 0xe8e2d6], [640, 120, -0.1, 0xe8e2d6]]) {
-    rbox(280, 30, 110, 10, new THREE.MeshStandardMaterial({ color: col, roughness: 0.7 }), { x: bedX + dx, y: 15, z: bedZ + dz, ry });
-    rbox(240, 90, 100, 35, mats.red, { x: bedX + dx + 10, y: 70, z: bedZ + dz, ry });
-  }
-
   /* the decks along the left wall: two 1200s and a mixer on a slim stand */
   const decks = [];
   const djX = -ROOM.halfW + 300, djZ = -150;
@@ -663,7 +650,7 @@ export function createRoom({ scene }) {
   for (const x of [-9, 9]) for (let j = 0; j < 8; j++) box(5, 0.8, 4, leds[j < 5 ? 0 : j < 7 ? 1 : 2], { x, y: 71.6, z: -30 - j * 11, parent: mixer, cast: false });
   for (const x of [-18, 0, 18]) cyl(6, 7, knob, { x, y: 74, z: 90, parent: mixer, cast: false, seg: 16 });
 
-  /* two crates of records in front of the stand; two more records are out on the decks */
+  /* two crates of records in front of the stand */
   const covers = coverAtlas();
   const coverTex = tex(covers.canvas);
   coverTex.wrapS = coverTex.wrapT = THREE.ClampToEdgeWrapping;
@@ -694,12 +681,8 @@ export function createRoom({ scene }) {
     for (const sz of [-1, 1]) parts.push(box(330, 14, 12, mats.crate, { y: 276, z: sz * 159, parent: g }));
     for (const sx of [-1, 1]) parts.push(box(12, 14, 330, mats.crate, { x: sx * 159, y: 276, parent: g }));
     const [mesh] = bakeInto(g, parts);
-    // a solid, unseen box so a click between the rails still counts as the crate
-    const hit = new THREE.Mesh(new THREE.BoxGeometry(330, 300, 330), new THREE.MeshBasicMaterial({ visible: false }));
-    hit.position.y = 150;
-    g.add(hit);
     shadowBlob(520, 520, x, 0, z, ry);
-    return { group: g, mesh, hit, x, z };
+    return { group: g, mesh, x, z };
   };
   crates.push(makeCrate(-1150, 20, 0.12), makeCrate(-1150, 350, -0.08));
   // records stand in six slots per crate, each leaning a little more than the one behind it
@@ -710,68 +693,20 @@ export function createRoom({ scene }) {
     q.premultiply(crate.group.quaternion);
     return { p, q };
   };
-  // a record that is out on a deck leaves its sleeve leaning on the wall behind the deck
-  const asidePose = (deck) => ({ p: new THREE.Vector3(-ROOM.halfW + 38, 903, deck.group.position.z), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0.2)) });
   for (let i = 0; i < 12; i++) {
     const mesh = new THREE.Mesh(sleeveGeometry(i), sleeveMat);
     mesh.castShadow = false;
     mesh.receiveShadow = true;
     group.add(mesh);
     const home = { crate: Math.floor(i / 6), slot: i % 6 };
-    const rec = { id: i, mesh, label: covers.labels[i], home, where: 'crate' };
     const pose = slotPose(crates[home.crate], home.slot);
     mesh.position.copy(pose.p);
     mesh.quaternion.copy(pose.q);
-    records.push(rec);
+    records.push({ id: i, mesh, label: covers.labels[i], home });
   }
-  for (const [deck, rec] of [[deckA, records[5]], [deckB, records[11]]]) {
-    deck.record = rec;
-    rec.where = 'deck';
-    deck.label.color.set(rec.label);
-    const pose = asidePose(deck);
-    rec.mesh.position.copy(pose.p);
-    rec.mesh.quaternion.copy(pose.q);
-  }
-  const tweens = [];
-  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
-  const tween = (obj, to, dur, lift = 0, onDone = null) => {
-    for (let i = tweens.length - 1; i >= 0; i--) if (tweens[i].obj === obj) tweens.splice(i, 1);
-    tweens.push({ obj, from: { p: obj.position.clone(), q: obj.quaternion.clone() }, to, t: 0, dur, lift, onDone });
-  };
+  deckA.label.color.set(covers.labels[5]);
+  deckB.label.color.set(covers.labels[11]);
   const setPlaying = (deck, on) => { deck.playing = on; deck.lamp.material.emissiveIntensity = on ? 1.4 : 0; };
-  let held = null;
-  // pull a record out of its crate: it rises and turns to face `from` (the camera)
-  const takeRecord = (rec, from) => {
-    if (held || rec.where !== 'crate') return false;
-    held = rec;
-    rec.where = 'hand';
-    const crate = crates[rec.home.crate];
-    const p = new THREE.Vector3(crate.x + 160, 600, crate.z);
-    const yaw = Math.atan2(-(from.z - p.z), from.x - p.x);
-    tween(rec.mesh, { p, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)) }, 520, 120);
-    return true;
-  };
-  const returnRecord = () => {
-    if (!held) return false;
-    const rec = held;
-    held = null;
-    rec.where = 'crate';
-    tween(rec.mesh, slotPose(crates[rec.home.crate], rec.home.slot), 480, 90);
-    return true;
-  };
-  // drop the held record on a deck: its sleeve goes to the wall, the old one back to its crate
-  const placeRecord = (deck) => {
-    if (!held) return false;
-    const rec = held;
-    held = null;
-    rec.where = 'deck';
-    const old = deck.record;
-    deck.record = rec;
-    setPlaying(deck, false);
-    tween(rec.mesh, asidePose(deck), 720, 260, () => deck.label.color.set(rec.label));
-    if (old) { old.where = 'crate'; tween(old.mesh, slotPose(crates[old.home.crate], old.home.slot), 720, 200); }
-    return true;
-  };
   rbox(240, 30, 900, 4, mats.desk, { x: -ROOM.halfW + 120, y: 1650, z: djZ });
   for (const dz of [-380, 380]) box(20, 200, 20, mats.black, { x: -ROOM.halfW + 40, y: 1540, z: djZ + dz, cast: false });
   cyl(45, 200, mats.trim, { x: -ROOM.halfW + 120, y: 1765, z: djZ + 320 });
@@ -835,7 +770,7 @@ export function createRoom({ scene }) {
     shadowBlob(300, 320, -640, 0, 380, -0.8);
   }
   // where the car cannot go: the walls, and the footprints of the furniture
-  const blocks = [[-700, 700, -1000, -300], [-1990, -1410, -810, 510], [-1330, -970, -160, 560], [-2000, -950, 530, 2600], [1220, 1940, -90, 390], [300, 820, -260, 360]].map(([x0, x1, z0, z1]) => ({ x0, x1, z0, z1 }));
+  const blocks = [[-700, 700, -1000, -300], [-1990, -1410, -810, 510], [-1330, -970, -160, 560], [1220, 1940, -90, 390], [300, 820, -260, 360]].map(([x0, x1, z0, z1]) => ({ x0, x1, z0, z1 }));
   const CAR_R = 170;
   const stepCar = (dt) => {
     const c = car;
@@ -943,8 +878,6 @@ export function createRoom({ scene }) {
      geometry changes when the photo arrives), and the screens. */
   const keep = new Set([poster, gloss, frame, clock, clockRing, screen, tvGlass, sky, bulb, dome, floor, ceiling, rugMesh]);
   for (const d of decks) { d.group.traverse((m) => keep.add(m)); for (const m of d.meshes) keep.add(m); }
-  for (const c of crates) { keep.add(c.mesh); keep.add(c.hit); }
-  for (const r of records) keep.add(r.mesh);
   car.group.traverse((m) => keep.add(m));
   remote.traverse((m) => keep.add(m));
   group.updateWorldMatrix(true, true);
@@ -980,23 +913,13 @@ export function createRoom({ scene }) {
   let elapsed = 0;
   return {
     group, decks, interactives, lamp, sun, panel,
-    crates, records, car, remote, takeRecord, returnRecord, placeRecord, setPlaying,
-    get held() { return held; },
+    car, remote,
     get shadowsDirty() { return shadowsDirty; },
     set shadowsDirty(v) { shadowsDirty = v; },
     phoneSpot: new THREE.Vector3(0, DESK.top, DESK.z + 230),
     update(dt) {
       elapsed += dt;
       for (const d of decks) if (d.playing) d.platter.rotation.y += dt * Math.PI * 2 * (33.33 / 60);
-      for (let i = tweens.length - 1; i >= 0; i--) {
-        const tw = tweens[i];
-        tw.t += dt * 1000;
-        const k = easeInOut(Math.min(1, tw.t / tw.dur));
-        tw.obj.position.lerpVectors(tw.from.p, tw.to.p, k);
-        tw.obj.position.y += Math.sin(k * Math.PI) * tw.lift;
-        tw.obj.quaternion.slerpQuaternions(tw.from.q, tw.to.q, k);
-        if (tw.t >= tw.dur) { tweens.splice(i, 1); tw.onDone?.(); }
-      }
       if (car.driving || car.v !== 0) stepCar(dt);
       screenMat.map.offset.x = Math.sin(elapsed * 6) * 0.002;
       tvGlow.intensity = 0.8 + Math.sin(elapsed * 9) * 0.08 + Math.sin(elapsed * 23) * 0.05;
