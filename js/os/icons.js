@@ -1,6 +1,5 @@
 // Home screen icons: glossy rounded squares with hand-drawn glyphs.
 import { roundRect, FONT } from './ui.js';
-import { dunkSilhouette, turntable, n64Controller, rcCar } from './art.js';
 
 export const ICON = 57;
 const white = '#fff';
@@ -51,11 +50,28 @@ const GLYPHS = {
     ctx.fillStyle = '#e9ecf1';
     ctx.fillRect(41, 9, 8, 5);
   },
-  n64(ctx) {
-    n64Controller(ctx, 28.5, 30, 52, '#c9ccd1');
+  videos(ctx) {
+    ctx.strokeStyle = '#3b2a18'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(24, 14); ctx.lineTo(18, 5); ctx.moveTo(30, 14); ctx.lineTo(36, 5); ctx.stroke();
+    ctx.fillStyle = '#8a5a2b';
+    roundRect(ctx, 8, 13, 41, 32, 6);
+    ctx.fill();
+    const scr = ctx.createLinearGradient(0, 17, 0, 41);
+    scr.addColorStop(0, '#dfe4ea'); scr.addColorStop(1, '#8b9096');
+    ctx.fillStyle = scr;
+    roundRect(ctx, 12, 17, 26, 24, 3);
+    ctx.fill();
+    ctx.fillStyle = '#3a2a18';
+    ctx.beginPath(); ctx.arc(44, 24, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(44, 33, 2.2, 0, Math.PI * 2); ctx.fill();
   },
-  rc(ctx) {
-    rcCar(ctx, 28.5, 32, 52);
+  stocks(ctx) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+    for (let y = 14; y < 50; y += 9) { ctx.beginPath(); ctx.moveTo(6, y); ctx.lineTo(51, y); ctx.stroke(); }
+    ctx.strokeStyle = white; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(8, 44); ctx.lineTo(16, 35); ctx.lineTo(24, 39); ctx.lineTo(32, 25); ctx.lineTo(40, 29); ctx.lineTo(50, 13);
+    ctx.stroke();
   },
   maps(ctx) {
     ctx.fillStyle = '#9ecbe6';
@@ -169,19 +185,13 @@ const GLYPHS = {
     ctx.fillStyle = white;
     ctx.beginPath(); ctx.moveTo(19, 38); ctx.lineTo(26, 31); ctx.lineTo(31, 26); ctx.closePath(); ctx.fill();
   },
-  decks(ctx) {
-    ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(26, 30, 20, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
-    for (let r = 9; r < 19; r += 3) { ctx.beginPath(); ctx.arc(26, 30, r, 0, Math.PI * 2); ctx.stroke(); }
-    ctx.fillStyle = '#d94a2b';
-    ctx.beginPath(); ctx.arc(26, 30, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#f5e6c8';
-    ctx.beginPath(); ctx.arc(26, 30, 1.5, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#eceef0'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(49, 12); ctx.quadraticCurveTo(50, 28, 36, 38); ctx.stroke();
-    ctx.fillStyle = '#b8babd';
-    ctx.beginPath(); ctx.arc(49, 12, 4.5, 0, Math.PI * 2); ctx.fill();
+  music(ctx) {
+    ctx.fillStyle = white; ctx.strokeStyle = white; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.ellipse(21, 40, 5, 4, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(37, 36, 5, 4, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(25, 39); ctx.lineTo(25, 16); ctx.lineTo(41, 12); ctx.lineTo(41, 35); ctx.stroke();
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(25, 17); ctx.lineTo(41, 13); ctx.stroke();
   },
 };
 

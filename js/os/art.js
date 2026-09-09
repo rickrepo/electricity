@@ -152,6 +152,31 @@ export function earthWallpaper() {
   return c;
 }
 
+// Rings on dark water, the other wallpaper.
+export function rippleWallpaper() {
+  reseed(7);
+  const [c, ctx] = makeCanvas(W, H);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0a1a2e');
+  g.addColorStop(1, '#1f4d7a');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  const centers = [[190, 300], [90, 180], [250, 430]];
+  centers.forEach(([cx, cy], k) => {
+    for (let r = 12; r < 260; r += 14 + k * 3) {
+      ctx.strokeStyle = `rgba(190,220,255,${0.5 * (1 - r / 260)})`;
+      ctx.lineWidth = 2.2 - (r / 260) * 1.6;
+      ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+  });
+  const glow = ctx.createRadialGradient(190, 300, 4, 190, 300, 90);
+  glow.addColorStop(0, 'rgba(220,240,255,0.55)');
+  glow.addColorStop(1, 'rgba(220,240,255,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+  return c;
+}
+
 /* ---------------- a direct-drive turntable ---------------- */
 // Drawn in a 300 x 246 box scaled to `w` wide.
 export function turntable(ctx, x, y, w, { angle = 0, playing = false, pitch = 0.5 } = {}) {
@@ -502,6 +527,50 @@ export function makePhoto(kind) {
       ground('#4d2b3a', '#6b3f52', 330);
       cake(ctx, 160, 220, 240);
       break;
+    case 'beach': {
+      const sky = ctx.createLinearGradient(0, 0, 0, PH * 0.6);
+      sky.addColorStop(0, '#4a90d9'); sky.addColorStop(1, '#bfe0f5');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, PW, PH * 0.6);
+      ctx.fillStyle = '#2f7fb8'; ctx.fillRect(0, PH * 0.6, PW, PH * 0.16);
+      ctx.fillStyle = '#e9d7a8'; ctx.fillRect(0, PH * 0.76, PW, PH * 0.24);
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      for (let i = 0; i < 6; i++) ctx.fillRect(rnd() * PW, PH * 0.6 + rnd() * PH * 0.16, 30 + rnd() * 60, 2);
+      ctx.fillStyle = '#ffe9a8'; ctx.beginPath(); ctx.arc(240, 120, 34, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#c8322b'; ctx.fillRect(60, PH * 0.66, 6, 70);
+      ctx.beginPath(); ctx.ellipse(63, PH * 0.66, 46, 12, 0, Math.PI, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case 'mountains': {
+      const sky = ctx.createLinearGradient(0, 0, 0, PH);
+      sky.addColorStop(0, '#6fa3e0'); sky.addColorStop(1, '#dfe9f3');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, PW, PH);
+      for (let layer = 0; layer < 3; layer++) {
+        ctx.fillStyle = ['#8fa3b8', '#5f7690', '#3a4d63'][layer];
+        ctx.beginPath(); ctx.moveTo(0, PH);
+        for (let x = 0; x <= PW; x += 40) ctx.lineTo(x, PH * (0.45 + layer * 0.15) + Math.sin(x * 0.03 + layer) * 40 + rnd() * 20);
+        ctx.lineTo(PW, PH); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath(); ctx.moveTo(120, PH * 0.45 + 10); ctx.lineTo(150, PH * 0.38); ctx.lineTo(185, PH * 0.47); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'night': {
+      ctx.fillStyle = '#0a0c14'; ctx.fillRect(0, 0, PW, PH);
+      ctx.fillStyle = '#1c1e26'; ctx.fillRect(0, PH * 0.62, PW, PH * 0.38);
+      for (let i = 0; i < 5; i++) { ctx.fillStyle = '#f2c86b'; ctx.beginPath(); ctx.arc(40 + i * 62, PH * 0.5, 5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(242,200,107,0.12)'; ctx.beginPath(); ctx.arc(40 + i * 62, PH * 0.55, 60, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#3a3d47'; ctx.fillRect(38 + i * 62, PH * 0.5, 4, PH * 0.12); }
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      for (let i = 0; i < 4; i++) { ctx.fillRect(30 + i * 70, PH * 0.78, 50, 3); }
+      break;
+    }
+    case 'snow': {
+      ctx.fillStyle = '#c9d3dd'; ctx.fillRect(0, 0, PW, PH * 0.55);
+      ctx.fillStyle = '#f2f5f8'; ctx.fillRect(0, PH * 0.55, PW, PH * 0.45);
+      ctx.fillStyle = '#6b5a4a'; ctx.fillRect(40, PH * 0.3, 90, PH * 0.3); ctx.fillStyle = '#8a3b32'; ctx.beginPath(); ctx.moveTo(30, PH * 0.3); ctx.lineTo(85, PH * 0.18); ctx.lineTo(140, PH * 0.3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(30, PH * 0.3); ctx.lineTo(85, PH * 0.2); ctx.lineTo(140, PH * 0.3); ctx.lineTo(140, PH * 0.32); ctx.lineTo(30, PH * 0.32); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff';
+      for (let i = 0; i < 160; i++) { ctx.beginPath(); ctx.arc(rnd() * PW, rnd() * PH, 1 + rnd() * 2, 0, Math.PI * 2); ctx.fill(); }
+      break;
+    }
     case 'skyline': {
       const sky = ctx.createLinearGradient(0, 0, 0, PH);
       sky.addColorStop(0, '#1b0710'); sky.addColorStop(0.6, '#c74a1e'); sky.addColorStop(1, '#f6c26a');

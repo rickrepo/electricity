@@ -16,15 +16,18 @@ interface.
 
 The phone runs software drawn in the manner of the first iPhone OS:
 
-- a lock screen with the clock and "slide to unlock" over the dunk poster
-  (Settings > Wallpaper swaps in the planet);
-- a home screen of sixteen glossy icons over a reflective dock: Messages,
-  Calendar, Photos, Camera, N64, RC Cars, Maps, Weather, Clock, Calculator,
-  Notes, Settings, and Phone, Mail, Safari, Decks in the dock;
+- a lock screen with the clock and "slide to unlock" over the planet
+  (Settings > Wallpaper swaps in ripples);
+- a home screen of sixteen glossy icons over a reflective dock, the original
+  set: Messages, Calendar, Photos, Camera, Videos, Stocks, Maps, Weather,
+  Clock, Calculator, Notes, Settings, and Phone, Mail, Safari, iPod;
 - every app does something. Safari opens the About page. Messages and Mail
-  have threads and an inbox. Photos has a camera roll and Camera adds to it.
-  Calculator calculates, Phone dials, Decks has two turntables and a
-  crossfader, Settings toggles airplane mode, brightness, and the wallpaper.
+  have threads and an inbox. Photos has a camera roll and Camera adds to it
+  (it looks at the room). Stocks charts, Videos plays, iPod plays, Calculator
+  calculates, Phone dials, Settings toggles airplane mode, brightness, and the
+  wallpaper.
+
+The personal things live in the room, not on the phone.
 
 The physical buttons work: the home button goes home (or wakes the phone),
 the sleep button on the top edge puts it to sleep. Keyboard: **H** and **S**
@@ -61,7 +64,7 @@ js/phone.js         the phone (geometry and materials), SPEC has the measurement
 js/os/core.js       the software: boot, lock, home, app runtime (scrolling, nav bars)
 js/os/apps.js       the sixteen apps
 js/os/icons.js      the home screen icons
-js/os/art.js        the poster, the planet, the turntable, the controller, the buggy
+js/os/art.js        the poster (for the wall), the planet, the ripples, the photos
 js/os/ui.js         drawing helpers (bars, groups, toggles, bubbles)
 js/textures.js      the phone's surfaces
 vendor/three.min.js three.js + OrbitControls, bundled

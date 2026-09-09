@@ -4,7 +4,7 @@
 import { W, H, STATUS_H, CONTENT_Y, FONT, clamp, roundRect, navBar, pinstripes, inRect, clockText } from './ui.js';
 import { ICON, renderAtlas } from './icons.js';
 import { APPS, DOCK, ALL, PHOTO_KINDS } from './apps.js';
-import { dunkWallpaper, earthWallpaper, makePhoto } from './art.js';
+import { earthWallpaper, rippleWallpaper, makePhoto } from './art.js';
 
 const S = 2;
 const TRACK = { x: 22, y: 419, w: 276, h: 46, r: 9 };
@@ -23,8 +23,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
   canvas.height = H * S;
   const ctx = canvas.getContext('2d');
   const measure = document.createElement('canvas').getContext('2d');
-  const wallpapers = { dunk: dunkWallpaper(), earth: earthWallpaper() };
-  const settings = { wallpaper: 'dunk', brightness: 1, airplane: false };
+  const wallpapers = { earth: earthWallpaper(), ripples: rippleWallpaper() };
+  const settings = { wallpaper: 'earth', brightness: 1, airplane: false };
   const photos = PHOTO_KINDS.map(([kind, caption]) => ({ canvas: makePhoto(kind), caption }));
   let atlas = null, atlasMinute = -1;
 
@@ -95,7 +95,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
 
   /* ---------- lock screen ---------- */
   function drawLock(now) {
-    ctx.drawImage(wallpapers[settings.wallpaper] || wallpapers.dunk, 0, 0, W, H);
+    ctx.drawImage(wallpapers[settings.wallpaper] || wallpapers.earth, 0, 0, W, H);
     statusBar();
     const p = clockText();
     const date = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
@@ -425,6 +425,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R' } = {}) {
     if (ptr.mode === 'bar') {
       if (inRect(s.barHits?.back, x, y)) app.back?.(s, os);
       else if (inRect(s.barHits?.right, x, y)) app.barTap?.('right', s, os);
+      else app.tabTap?.(x, y, s, os);
       return;
     }
     if (app.fixed) app.tap?.(x, y, s, os, now);

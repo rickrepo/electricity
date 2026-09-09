@@ -4,7 +4,7 @@
 //   scrolling apps draw content from y = 0 under a nav bar, and the core
 //   scrolls, clips, and routes taps into content coordinates.
 import { W, H, CONTENT_Y, NAV_H, FONT, clamp, roundRect, wrapLines, group, separator, chevron, sectionLabel, toggle, slider, bubble, avatar, inRect, barButton, clockText, pad2 } from './ui.js';
-import { dunkSilhouette, turntable, n64Controller, cartridge, rcCar, skyline, makePhoto } from './art.js';
+import { dunkSilhouette, n64Controller, rcCar, skyline } from './art.js';
 
 const CONTENT_H = H - CONTENT_Y;
 const text = (ctx, str, x, y, { font = `15px ${FONT}`, color = '#000', align = 'left', baseline = 'alphabetic' } = {}) => {
@@ -27,16 +27,12 @@ const ABOUT = [
   ['tag', 'Born 1989 · builds things · still has the posters'],
   ['p', 'I was born in 1989, so I learned to read off cereal boxes and learned to type on a beige keyboard that weighed as much as I did. I have been taking things apart ever since. Most of them went back together.'],
   ['h2', 'The dunk'],
-  ['art', 'dunk'],
   ['p', 'A poster of Michael Jordan taking off from the free-throw line hung over my bed for ten years. It is the reason I still believe you can hang in the air a little longer if you commit.'],
   ['h2', 'Two 1200s'],
-  ['art', 'decks'],
   ['p', 'Two Technics SL-1200s, a mixer with one good channel, and a milk crate of records. I was never great. I was loud, and I was on time.'],
   ['h2', 'The N64'],
-  ['art', 'n64'],
   ['p', 'Four controllers, one couch, no memory card. It still boots on the first try, which is more than I can say for most of my code.'],
   ['h2', 'Gas cars'],
-  ['art', 'rc'],
   ['p', 'Nitro buggies: tuned pipes, glow plugs, a smell that never leaves your hoodie. Top speed: enough. Parts replaced: all of them, twice.'],
   ['h2', 'Now'],
   ['p', 'I build small, strange, useful things for the web. This phone is one of them: no 3D models, no image files, every surface drawn from scratch.'],
@@ -44,37 +40,6 @@ const ABOUT = [
   ['link', 'hello@ricky.example'],
   ['foot', '© 1989–2026 Ricky · rendered at 163 ppi'],
 ];
-
-function aboutArt(ctx, kind, x, y, w, h) {
-  ctx.save();
-  roundRect(ctx, x, y, w, h, 8);
-  ctx.clip();
-  if (kind === 'dunk') {
-    const g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, '#5a0f1d'); g.addColorStop(0.6, '#e0511d'); g.addColorStop(1, '#f6b35a');
-    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#ffe9a8'; ctx.beginPath(); ctx.arc(x + w * 0.68, y + h * 0.62, 26, 0, Math.PI * 2); ctx.fill();
-    skyline(ctx, x, y + h - 46, w, 46, '#150609');
-    dunkSilhouette(ctx, x + w * 0.42, y + h * 0.66, 0.52, { color: '#0b0507', ball: '#0b0507' });
-  } else if (kind === 'decks') {
-    ctx.fillStyle = '#2a2622'; ctx.fillRect(x, y, w, h);
-    turntable(ctx, x + 10, y + 16, 128, { angle: 0.4, playing: true, pitch: 0.4 });
-    turntable(ctx, x + w - 138, y + 16, 128, { angle: 2.1, playing: false, pitch: 0.55 });
-  } else if (kind === 'n64') {
-    ctx.fillStyle = '#5a4a3c'; ctx.fillRect(x, y, w, h);
-    n64Controller(ctx, x + w / 2, y + h / 2 + 6, 190);
-  } else if (kind === 'rc') {
-    ctx.fillStyle = '#8ec8ef'; ctx.fillRect(x, y, w, h * 0.62);
-    ctx.fillStyle = '#9a7b53'; ctx.fillRect(x, y + h * 0.62, w, h);
-    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * 0.78, 90, 8, 0, 0, Math.PI * 2); ctx.fill();
-    rcCar(ctx, x + w / 2, y + h * 0.6, 200);
-  }
-  ctx.restore();
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-  ctx.lineWidth = 1;
-  roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 8);
-  ctx.stroke();
-}
 
 const safari = {
   id: 'safari', name: 'Safari', top: '#78bcff', bottom: '#1c63c9',
@@ -90,7 +55,6 @@ const safari = {
       else if (type === 'tag') { m.font = `13px ${FONT}`; b.lines = wrapLines(m, value, WIDTH); b.h = b.lines.length * 17 + 12; }
       else if (type === 'p') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, value, WIDTH); b.h = b.lines.length * 21 + 14; }
       else if (type === 'h2') { b.y += 8; b.h = 40; }
-      else if (type === 'art') { b.h = 164; }
       else if (type === 'link') { b.h = 34; }
       else if (type === 'foot') { b.y += 10; b.h = 44; }
       blocks.push(b);
@@ -107,7 +71,6 @@ const safari = {
       else if (type === 'tag') b.lines.forEach((l, i) => text(ctx, l, s.X, y + 14 + i * 17, { font: `13px ${FONT}`, color: '#4c566c' }));
       else if (type === 'p') b.lines.forEach((l, i) => text(ctx, l, s.X, y + 16 + i * 21, { font: `15px ${FONT}`, color: '#222' }));
       else if (type === 'h2') { text(ctx, value, s.X, y + 26, { font: `bold 19px ${FONT}`, color: '#111' }); ctx.fillStyle = '#3a7fdb'; ctx.fillRect(s.X, y + 32, 28, 3); }
-      else if (type === 'art') aboutArt(ctx, value, s.X, y + 4, s.WIDTH, 150);
       else if (type === 'link') { text(ctx, value, s.X, y + 20, { font: `15px ${FONT}`, color: '#1a5cc8' }); ctx.fillStyle = '#1a5cc8'; ctx.fillRect(s.X, y + 23, ctx.measureText(value).width, 1); b.hit = { x: s.X, y: y + 4, w: 200, h: 26 }; }
       else if (type === 'foot') text(ctx, value, s.X, y + 22, { font: `12px ${FONT}`, color: '#8a8f99' });
     }
@@ -340,7 +303,7 @@ const calendar = {
 /* ================================================================== */
 /* Photos and Camera                                                   */
 /* ================================================================== */
-const PHOTO_KINDS = [['dunk', 'The poster, 1989'], ['decks', 'Both 1200s, one working needle'], ['n64', 'Player one'], ['rc', 'Number 89, pre-crash'], ['earth', 'Stock wallpaper'], ['cassette', 'Summer 99, side A'], ['cake', 'Year one'], ['skyline', 'Home, at the right hour']];
+const PHOTO_KINDS = [['skyline', 'Home, at the right hour'], ['beach', 'The one good day in August'], ['cake', 'Year one'], ['mountains', 'Higher than it looks'], ['cassette', 'Summer 99, side A'], ['earth', 'Stock wallpaper'], ['night', 'Parking lot, 2 AM'], ['snow', 'First snow, no school']];
 
 const photos = {
   id: 'photos', name: 'Photos', top: '#7cc0ff', bottom: '#2b6fd0',
@@ -469,97 +432,6 @@ const camera = {
     cameraScene(cctx, now, 0, 0, W, H - 64);
     s.last = c;
     os.addPhoto(c, 'Living room, just now');
-  },
-};
-
-/* ================================================================== */
-/* N64                                                                 */
-/* ================================================================== */
-const CARTS = [
-  ['Kart, the one everyone fights over', '1997', '#8a8d92'],
-  ['Golden Something, four players', '1997', '#c9a53c'],
-  ['The one with the ocarina', '1998', '#8a8d92'],
-  ['Wrestling, with the chairs', '1999', '#b8352b'],
-  ['Racing, on the water', '1996', '#2f6fd0'],
-];
-
-const n64 = {
-  id: 'n64', name: 'N64', top: '#c9ccd1', bottom: '#5b5f66', glyph: 'n64',
-  init() { return { inserted: -1 }; },
-  bar() { return { title: 'N64' }; },
-  height() { return 214 + CARTS.length * 56 + 20; },
-  draw(ctx, s) {
-    ctx.fillStyle = '#3d3a36';
-    ctx.fillRect(0, 0, W, 150);
-    n64Controller(ctx, W / 2, 76, 230);
-    text(ctx, s.inserted < 0 ? 'Four controllers. One couch. No memory card.' : `Inserted: ${CARTS[s.inserted][0]}`, W / 2, 138, { font: `12px ${FONT}`, color: '#d9d5ce', align: 'center' });
-    sectionLabel(ctx, 'On the shelf', 16, 184);
-    group(ctx, 10, 196, W - 20, CARTS.length * 56);
-    CARTS.forEach(([name, year, color], i) => {
-      const y = 196 + i * 56;
-      cartridge(ctx, 20, y + 10, 46, color);
-      text(ctx, name, 78, y + 25, { font: `bold 14px ${FONT}` });
-      text(ctx, `${year} · ${s.inserted === i ? 'in the console' : 'on the shelf'}`, 78, y + 43, { font: `12px ${FONT}`, color: '#6b6f78' });
-      chevron(ctx, W - 24, y + 28);
-      if (i < CARTS.length - 1) separator(ctx, 78, y + 55, W - 88);
-    });
-  },
-  tap(x, y, s) {
-    const i = Math.floor((y - 196) / 56);
-    if (y >= 196 && i >= 0 && i < CARTS.length) s.inserted = s.inserted === i ? -1 : i;
-  },
-};
-
-/* ================================================================== */
-/* RC cars                                                             */
-/* ================================================================== */
-const SPECS = [['Engine', '.21 nitro, pull start'], ['Fuel', '20% nitro, smells great'], ['Top speed', '45 mph, downhill, briefly'], ['Radio', '2 channels, 27 MHz'], ['Status', 'needs a clutch bell']];
-
-const rc = {
-  id: 'rc', name: 'RC Cars', top: '#ffd15c', bottom: '#e06a12', glyph: 'rc',
-  init() { return { runUntil: 0, puffs: [] }; },
-  animating(s, now) { return now < s.runUntil + 1500; },
-  bar() { return { title: 'RC Cars' }; },
-  height() { return 232 + SPECS.length * 40 + 24; },
-  draw(ctx, s, os, now) {
-    const running = now < s.runUntil;
-    ctx.fillStyle = '#8ec8ef';
-    ctx.fillRect(0, 0, W, 100);
-    ctx.fillStyle = '#9a7b53';
-    ctx.fillRect(0, 100, W, 60);
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath(); ctx.ellipse(W / 2, 122, 105, 9, 0, 0, Math.PI * 2); ctx.fill();
-    const bounce = running ? Math.abs(Math.sin(now / 22)) * 2 : 0;
-    const jitter = running ? (Math.random() - 0.5) * 1.5 : 0;
-    rcCar(ctx, W / 2 + jitter, 96, 230, { bounce });
-    if (running && Math.random() < 0.5) s.puffs.push({ x: W / 2 + 105, y: 118, t: now, dx: 0.6 + Math.random() * 0.6, r: 3 + Math.random() * 4 });
-    s.puffs = s.puffs.filter((p) => now - p.t < 1400);
-    for (const p of s.puffs) {
-      const age = (now - p.t) / 1400;
-      ctx.fillStyle = `rgba(230,230,235,${0.55 * (1 - age)})`;
-      ctx.beginPath(); ctx.arc(p.x + age * 70 * p.dx, p.y - age * 26, p.r + age * 12, 0, Math.PI * 2); ctx.fill();
-    }
-    const by = 172;
-    const g = ctx.createLinearGradient(0, by, 0, by + 40);
-    if (running) { g.addColorStop(0, '#f28b52'); g.addColorStop(1, '#c9521c'); } else { g.addColorStop(0, '#7fa6de'); g.addColorStop(1, '#3d6fb9'); }
-    ctx.fillStyle = g;
-    roundRect(ctx, 60, by, W - 120, 40, 9);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-    ctx.stroke();
-    text(ctx, running ? 'RUNNING · hold on' : 'Pull start', W / 2, by + 21, { font: `bold 16px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
-    s.hits = { start: { x: 60, y: by, w: W - 120, h: 40 } };
-    sectionLabel(ctx, 'Number 89', 16, 232 + 4);
-    group(ctx, 10, 244, W - 20, SPECS.length * 40);
-    SPECS.forEach(([k, v], i) => {
-      const y = 244 + i * 40;
-      text(ctx, k, 22, y + 25, { font: `bold 14px ${FONT}` });
-      text(ctx, v, W - 22, y + 25, { font: `14px ${FONT}`, color: '#3a5f9a', align: 'right' });
-      if (i < SPECS.length - 1) separator(ctx, 22, y + 39, W - 44);
-    });
-  },
-  tap(x, y, s, os, now) {
-    if (inRect(s.hits?.start, x, y)) s.runUntil = now + 2800;
   },
 };
 
@@ -775,7 +647,7 @@ const calculator = {
 /* ================================================================== */
 /* Notes                                                               */
 /* ================================================================== */
-const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. clutch bell for number 89', '4. dust cover for deck B', '5. beat the water level', '6. call Mom back (4 texts)', '', 'Nothing here is real except 1989.'];
+const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. fix the squeaky desk chair', '4. return the library book (1998)', '5. call Mom back (4 texts)', '', 'Nothing here is real except 1989.'];
 
 const notes = {
   id: 'notes', name: 'Notes', top: '#fff0a0', bottom: '#f3c53c',
@@ -808,7 +680,7 @@ const settings = {
     const st = os.settings;
     s.hits = {};
     if (s.view === 'about') {
-      const rows = [['Model', 'R1'], ['Born', '1989'], ['Software', '1.0 (2026)'], ['Storage', '8 GB, mostly cars'], ['Photos', String(os.photos.length)], ['Serial', 'RCKY-1989-0001'], ['Wallpaper', st.wallpaper === 'dunk' ? 'The poster' : 'The planet']];
+      const rows = [['Model', 'R1'], ['Born', '1989'], ['Software', '1.0 (2026)'], ['Storage', '8 GB, mostly cars'], ['Photos', String(os.photos.length)], ['Serial', 'RCKY-1989-0001'], ['Wallpaper', st.wallpaper === 'ripples' ? 'Ripples' : 'The planet']];
       group(ctx, 10, 12, W - 20, rows.length * 44);
       rows.forEach(([k, v], i) => {
         const y = 12 + i * 44;
@@ -842,12 +714,12 @@ const settings = {
     s.hits.brightness = slider(ctx, 34, y + 28, W - 68, (st.brightness - 0.15) / 0.85);
     s.sliderX = 34; s.sliderW = W - 68;
     y += 68;
-    row('Wallpaper', st.wallpaper === 'dunk' ? 'The poster' : 'The planet', { key: 'wallpaper' });
+    row('Wallpaper', st.wallpaper === 'ripples' ? 'Ripples' : 'The planet', { key: 'wallpaper' });
     row('About', '', { key: 'about' });
   },
   tap(x, y, s, os) {
     if (inRect(s.hits.airplane, x, y)) os.settings.airplane = !os.settings.airplane;
-    else if (inRect(s.hits.wallpaper, x, y)) os.settings.wallpaper = os.settings.wallpaper === 'dunk' ? 'earth' : 'dunk';
+    else if (inRect(s.hits.wallpaper, x, y)) os.settings.wallpaper = os.settings.wallpaper === 'ripples' ? 'earth' : 'ripples';
     else if (inRect(s.hits.about, x, y)) { s.view = 'about'; s.scroll = 0; }
     else if (inRect(s.hits.brightness, x, y)) os.settings.brightness = clamp(0.15 + ((x - s.sliderX) / s.sliderW) * 0.85, 0.15, 1);
   },
@@ -929,68 +801,222 @@ const phone = {
   },
 };
 
+
 /* ================================================================== */
-/* Decks: two turntables and a mixer                                  */
+/* Stocks                                                              */
 /* ================================================================== */
-const decks = {
-  id: 'decks', name: 'Decks', top: '#ffbf5c', bottom: '#e35f16', glyph: 'decks',
-  fixed: true,
-  init() { return { a: { angle: 0.3, playing: false, pitch: 0.5 }, b: { angle: 2.4, playing: false, pitch: 0.5 }, fader: 0.5, last: 0, drag: null }; },
-  animating(s) { return s.a.playing || s.b.playing || !!s.drag; },
-  draw(ctx, s, os, now) {
-    const dt = s.last ? Math.min(0.1, (now - s.last) / 1000) : 0;
-    s.last = now;
-    for (const d of [s.a, s.b]) if (d.playing) d.angle += dt * Math.PI * 2 * (33.33 / 60) * (1 + (d.pitch - 0.5) * 0.16);
-    ctx.fillStyle = '#1b1c1f';
-    ctx.fillRect(0, 20, W, H - 20);
-    turntable(ctx, 60, 26, 200, s.a);
-    turntable(ctx, 60, 252, 200, s.b);
-    // the mixer
-    ctx.fillStyle = '#2c2e33';
-    roundRect(ctx, 60, 196, 200, 50, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#111';
+const TICKERS = [['ACME', 42.10, 1.24], ['OMNI', 118.55, -2.31], ['ZAP', 7.82, 0.41], ['PEAR', 96.20, 3.05], ['FIZZ', 23.47, -0.66]];
+const RANGES = ['1d', '1w', '1m', '3m', '6m', '1y', '2y'];
+function series(seedBase, n) {
+  let x = 1000 + seedBase * 7919;
+  const r = () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; };
+  const out = [50];
+  for (let i = 1; i < n; i++) out.push(clamp(out[i - 1] + (r() - 0.48) * 6, 10, 95));
+  return out;
+}
+const stocks = {
+  id: 'stocks', name: 'Stocks', top: '#3d4d5e', bottom: '#0c151f',
+  background: '#0c0c0e',
+  init() { return { sel: 0, range: 2 }; },
+  bar() { return { title: 'Stocks' }; },
+  height() { return CONTENT_H; },
+  draw(ctx, s) {
+    ctx.fillStyle = '#0c0c0e';
+    ctx.fillRect(0, 0, W, CONTENT_H);
+    TICKERS.forEach(([t, price, chg], i) => {
+      const y = i * 44;
+      if (s.sel === i) { ctx.fillStyle = '#1c2431'; ctx.fillRect(0, y, W, 44); }
+      text(ctx, t, 14, y + 28, { font: `bold 18px ${FONT}`, color: '#fff' });
+      text(ctx, price.toFixed(2), 200, y + 28, { font: `18px ${FONT}`, color: '#fff', align: 'right' });
+      ctx.fillStyle = chg >= 0 ? '#3aa64a' : '#c8322b';
+      roundRect(ctx, 224, y + 10, 82, 24, 5);
+      ctx.fill();
+      text(ctx, `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`, 265, y + 27, { font: `bold 14px ${FONT}`, color: '#fff', align: 'center' });
+      ctx.fillStyle = '#26262b';
+      ctx.fillRect(0, y + 43, W, 1);
+    });
+    const top = TICKERS.length * 44 + 12;
+    RANGES.forEach((r, i) => {
+      const x = 10 + i * 43;
+      if (s.range === i) { ctx.fillStyle = '#3a4a5e'; roundRect(ctx, x, top, 40, 22, 4); ctx.fill(); }
+      text(ctx, r, x + 20, top + 15, { font: `bold 12px ${FONT}`, color: s.range === i ? '#fff' : '#9aa3ad', align: 'center' });
+    });
+    const gx = 14, gy = top + 34, gw = W - 28, gh = CONTENT_H - gy - 16;
+    ctx.fillStyle = '#131317';
+    ctx.fillRect(gx, gy, gw, gh);
+    ctx.strokeStyle = '#2a2a30';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(gx, gy + (gh * i) / 4); ctx.lineTo(gx + gw, gy + (gh * i) / 4); ctx.stroke(); }
+    const pts = series(s.sel * 10 + s.range, 40);
+    ctx.strokeStyle = TICKERS[s.sel][2] >= 0 ? '#5be08a' : '#ff6a5c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    pts.forEach((v, i) => { const x = gx + (i / (pts.length - 1)) * gw, y = gy + gh - (v / 100) * gh; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
     ctx.stroke();
-    ctx.fillStyle = '#111';
-    roundRect(ctx, 90, 216, 140, 10, 3);
-    ctx.fill();
-    const kx = 90 + s.fader * 140;
-    const kg = ctx.createLinearGradient(0, 206, 0, 236);
-    kg.addColorStop(0, '#e6e7e9'); kg.addColorStop(1, '#9a9ca0');
-    ctx.fillStyle = kg;
-    roundRect(ctx, kx - 9, 206, 18, 30, 3);
-    ctx.fill();
-    ctx.fillStyle = '#333';
-    ctx.fillRect(kx - 1, 208, 2, 26);
-    text(ctx, 'A', 74, 224, { font: `bold 12px ${FONT}`, color: s.a.playing ? '#ff5a3c' : '#8a8c90', align: 'center', baseline: 'middle' });
-    text(ctx, 'B', 246, 224, { font: `bold 12px ${FONT}`, color: s.b.playing ? '#ff5a3c' : '#8a8c90', align: 'center', baseline: 'middle' });
-    for (let i = 0; i < 6; i++) {
-      const lit = (i < (s.a.playing ? 6 * (1 - s.fader) : 0)) || (i < (s.b.playing ? 6 * s.fader : 0));
-      ctx.fillStyle = lit ? (i > 3 ? '#ff5a3c' : '#5be08a') : '#3a3c40';
-      ctx.fillRect(14 + i * 6, 226 - i * 2, 4, 3 + i * 2);
-      ctx.fillRect(W - 18 - i * 6, 226 - i * 2, 4, 3 + i * 2);
-    }
-    text(ctx, `A ${s.a.playing ? '● spinning' : '○ stopped'}     B ${s.b.playing ? '● spinning' : '○ stopped'}`, W / 2, 458, { font: `12px ${FONT}`, color: '#9a9ca0', align: 'center' });
-    ctx.fillStyle = '#5a5c60';
-    ctx.font = `bold 9px ${FONT}`;
-    ctx.textAlign = 'center';
-    ctx.fillText('TAP A PLATTER · DRAG THE CROSSFADER', W / 2, 474);
+    text(ctx, `${TICKERS[s.sel][0]} · ${RANGES[s.range]}`, gx + 8, gy + 18, { font: `bold 12px ${FONT}`, color: '#9aa3ad' });
+    s.hits = { rows: TICKERS.length * 44, top };
   },
-  down(x, y, s) {
-    if (x >= 80 && x <= 240 && y >= 200 && y <= 242) { s.drag = 'fader'; s.fader = clamp((x - 90) / 140, 0, 1); return true; }
-    return false;
-  },
-  move(x, y, s) { if (s.drag === 'fader') s.fader = clamp((x - 90) / 140, 0, 1); },
-  up(x, y, s) { s.drag = null; },
   tap(x, y, s) {
-    // platter centres: turntable px,py scaled by 200/300 from (60,26) and (60,252)
-    const hit = (oy) => Math.hypot(x - (60 + 118 * 0.667), y - (oy + 123 * 0.667)) < 70 || (x >= 60 + 16 * 0.667 && x <= 60 + 58 * 0.667 && y >= oy + 198 * 0.667 && y <= oy + 230 * 0.667);
-    if (hit(26)) s.a.playing = !s.a.playing;
-    else if (hit(252)) s.b.playing = !s.b.playing;
+    if (!s.hits) return;
+    if (y < s.hits.rows) { s.sel = Math.floor(y / 44); return; }
+    if (y >= s.hits.top && y < s.hits.top + 22) { const i = Math.floor((x - 10) / 43); if (i >= 0 && i < RANGES.length) s.range = i; }
   },
 };
 
-export const APPS = [messages, calendar, photos, camera, n64, rc, maps, weather, clock, calculator, notes, settings];
-export const DOCK = [phone, mail, safari, decks];
+/* ================================================================== */
+/* Videos                                                              */
+/* ================================================================== */
+const VIDEOS = [['Skateboarding dog', '0:48', '1,204,331 views', '#5aa0e6'], ['Mentos and cola, again', '1:12', '844,902 views', '#c8322b'], ['Grandma vs. the printer', '2:05', '312,118 views', '#7a5a3c'], ['Sunrise, sped up', '0:59', '98,004 views', '#f2a33a'], ['A cat plays the keyboard', '0:55', '4,120,776 views', '#3aa64a']];
+const videos = {
+  id: 'videos', name: 'Videos', top: '#e4e4e4', bottom: '#9a9a9a', glyph: 'videos',
+  init() { return { playing: -1, startedAt: 0, paused: false, pausedAt: 0 }; },
+  animating(s) { return s.playing >= 0 && !s.paused; },
+  bar(s) { return s.playing < 0 ? { title: 'Featured' } : { title: VIDEOS[s.playing][0], back: 'Featured' }; },
+  back(s) { if (s.playing < 0) return false; s.playing = -1; return true; },
+  height(s) { return s.playing < 0 ? VIDEOS.length * 70 : CONTENT_H; },
+  draw(ctx, s, os, now) {
+    if (s.playing < 0) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, W, 800);
+      VIDEOS.forEach(([title, len, views, color], i) => {
+        const y = i * 70;
+        ctx.fillStyle = color;
+        roundRect(ctx, 10, y + 8, 80, 54, 4);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath(); ctx.moveTo(44, y + 25); ctx.lineTo(60, y + 35); ctx.lineTo(44, y + 45); ctx.closePath(); ctx.fill();
+        text(ctx, title, 102, y + 28, { font: `bold 15px ${FONT}` });
+        text(ctx, `${len}  ·  ${views}`, 102, y + 48, { font: `12px ${FONT}`, color: '#6b6f78' });
+        chevron(ctx, W - 12, y + 35);
+        separator(ctx, 102, y + 69, W - 102);
+      });
+      return;
+    }
+    const [title, len, , color] = VIDEOS[s.playing];
+    const total = parseInt(len.split(':')[0], 10) * 60 + parseInt(len.split(':')[1], 10);
+    const elapsed = Math.min(total, ((s.paused ? s.pausedAt : now) - s.startedAt) / 1000);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, CONTENT_H);
+    const g = ctx.createLinearGradient(0, 40, 0, 300);
+    g.addColorStop(0, color); g.addColorStop(1, '#111');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 40, W, 240);
+    for (let i = 0; i < 3; i++) { ctx.fillStyle = `rgba(255,255,255,${0.08 + 0.05 * Math.sin(now / 300 + i)})`; ctx.beginPath(); ctx.arc(60 + i * 100 + Math.sin(now / 700 + i) * 20, 160 + Math.cos(now / 900 + i) * 40, 30 + i * 8, 0, Math.PI * 2); ctx.fill(); }
+    text(ctx, title, W / 2, 150, { font: `bold 18px ${FONT}`, color: 'rgba(255,255,255,0.9)', align: 'center' });
+    text(ctx, s.paused ? 'paused' : elapsed >= total ? 'the end' : 'playing', W / 2, 176, { font: `13px ${FONT}`, color: 'rgba(255,255,255,0.7)', align: 'center' });
+    ctx.fillStyle = '#333';
+    roundRect(ctx, 20, 320, W - 40, 6, 3); ctx.fill();
+    ctx.fillStyle = '#3a7fdb';
+    roundRect(ctx, 20, 320, (W - 40) * (elapsed / total), 6, 3); ctx.fill();
+    const mm = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
+    text(ctx, mm(elapsed), 20, 344, { font: `12px ${FONT}`, color: '#bbb' });
+    text(ctx, `-${mm(total - elapsed)}`, W - 20, 344, { font: `12px ${FONT}`, color: '#bbb', align: 'right' });
+    ctx.fillStyle = '#e9ecf1';
+    if (s.paused || elapsed >= total) { ctx.beginPath(); ctx.moveTo(150, 372); ctx.lineTo(176, 388); ctx.lineTo(150, 404); ctx.closePath(); ctx.fill(); }
+    else { ctx.fillRect(148, 372, 9, 32); ctx.fillRect(163, 372, 9, 32); }
+    s.hits = { play: { x: 120, y: 356, w: 80, h: 64 } };
+  },
+  tap(x, y, s, os, now) {
+    if (s.playing < 0) { const i = Math.floor(y / 70); if (i >= 0 && i < VIDEOS.length) { s.playing = i; s.startedAt = now; s.paused = false; s.scroll = 0; } return; }
+    if (inRect(s.hits?.play, x, y)) {
+      if (s.paused) { s.startedAt += now - s.pausedAt; s.paused = false; }
+      else { s.paused = true; s.pausedAt = now; }
+    }
+  },
+};
+
+/* ================================================================== */
+/* Music, the way the iPod app did it                                  */
+/* ================================================================== */
+const SONGS = [['Summer of 89', 'The Cassettes', 214, '#c8322b'], ['Dial Tone', 'Modem Kids', 187, '#3a7fdb'], ['Late Bus Home', 'Paper Route', 241, '#f2a33a'], ['Parking Lot Lights', 'The Cassettes', 198, '#3aa64a'], ['Static on Channel 3', 'Modem Kids', 176, '#7a4fb3'], ['Cul-de-sac', 'Paper Route', 223, '#5aa0e6']];
+const MUSIC_TABS = ['Playlists', 'Artists', 'Songs', 'Videos', 'More'];
+const music = {
+  id: 'music', name: 'iPod', top: '#ffbf5c', bottom: '#e35f16', glyph: 'music',
+  inset: 44,
+  init() { return { tab: 2, playing: -1, startedAt: 0, paused: false, pausedAt: 0, view: 'list' }; },
+  animating(s) { return s.view === 'now' && s.playing >= 0 && !s.paused; },
+  bar(s) { return s.view === 'now' ? { title: 'Now Playing', back: 'Songs' } : { title: MUSIC_TABS[s.tab] }; },
+  back(s) { if (s.view !== 'now') return false; s.view = 'list'; return true; },
+  height(s) { return s.view === 'now' ? CONTENT_H - 44 : Math.max(CONTENT_H, SONGS.length * 44); },
+  draw(ctx, s, os, now) {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, 800);
+    if (s.view === 'now' && s.playing >= 0) {
+      const [title, artist, total, color] = SONGS[s.playing];
+      const elapsed = Math.min(total, ((s.paused ? s.pausedAt : now) - s.startedAt) / 1000);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, W, CONTENT_H);
+      const g = ctx.createLinearGradient(50, 20, 270, 240);
+      g.addColorStop(0, color); g.addColorStop(1, '#222');
+      ctx.fillStyle = g;
+      ctx.fillRect(50, 16, 220, 220);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath(); ctx.arc(160, 126, 70, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.arc(160, 126, 14, 0, Math.PI * 2); ctx.fill();
+      text(ctx, title, W / 2, 268, { font: `bold 18px ${FONT}`, color: '#fff', align: 'center' });
+      text(ctx, artist, W / 2, 290, { font: `14px ${FONT}`, color: '#aaa', align: 'center' });
+      ctx.fillStyle = '#333';
+      roundRect(ctx, 30, 310, W - 60, 6, 3); ctx.fill();
+      ctx.fillStyle = '#e9ecf1';
+      roundRect(ctx, 30, 310, (W - 60) * (elapsed / total), 6, 3); ctx.fill();
+      const mm = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
+      text(ctx, mm(elapsed), 30, 334, { font: `12px ${FONT}`, color: '#bbb' });
+      text(ctx, `-${mm(total - elapsed)}`, W - 30, 334, { font: `12px ${FONT}`, color: '#bbb', align: 'right' });
+      ctx.fillStyle = '#e9ecf1';
+      ctx.beginPath(); ctx.moveTo(96, 358); ctx.lineTo(96, 382); ctx.lineTo(82, 370); ctx.closePath(); ctx.fill(); ctx.fillRect(78, 358, 3, 24);
+      ctx.beginPath(); ctx.moveTo(224, 358); ctx.lineTo(224, 382); ctx.lineTo(238, 370); ctx.closePath(); ctx.fill(); ctx.fillRect(239, 358, 3, 24);
+      if (s.paused || elapsed >= total) { ctx.beginPath(); ctx.moveTo(150, 354); ctx.lineTo(176, 370); ctx.lineTo(150, 386); ctx.closePath(); ctx.fill(); }
+      else { ctx.fillRect(148, 354, 9, 32); ctx.fillRect(163, 354, 9, 32); }
+      s.hits = { play: { x: 120, y: 340, w: 80, h: 60 }, prev: { x: 60, y: 340, w: 56, h: 60 }, next: { x: 204, y: 340, w: 56, h: 60 } };
+      return;
+    }
+    if (s.tab !== 2) {
+      const names = s.tab === 0 ? ['On-The-Go', 'Late bus', 'Loud, on time'] : s.tab === 1 ? ['Modem Kids', 'Paper Route', 'The Cassettes'] : s.tab === 3 ? ['Nothing downloaded yet'] : ['Albums', 'Compilations', 'Genres', 'Composers'];
+      names.forEach((n, i) => { const y = i * 44; text(ctx, n, 16, y + 28, { font: `bold 16px ${FONT}` }); chevron(ctx, W - 14, y + 22); separator(ctx, 16, y + 43, W - 16); });
+      return;
+    }
+    SONGS.forEach(([title, artist], i) => {
+      const y = i * 44;
+      if (s.playing === i) { ctx.fillStyle = '#e8f0fb'; ctx.fillRect(0, y, W, 44); }
+      text(ctx, title, 16, y + 20, { font: `bold 15px ${FONT}` });
+      text(ctx, artist, 16, y + 37, { font: `12px ${FONT}`, color: '#6b6f78' });
+      if (s.playing === i) { ctx.fillStyle = '#3a7fdb'; for (let k = 0; k < 3; k++) ctx.fillRect(W - 40 + k * 7, y + 26 - (4 + ((Math.floor(now / 160) + k) % 3) * 4), 4, 4 + ((Math.floor(now / 160) + k) % 3) * 4); }
+      separator(ctx, 16, y + 43, W - 16);
+    });
+  },
+  overlay(ctx, s) {
+    const y = H - 44;
+    const g = ctx.createLinearGradient(0, y, 0, H);
+    g.addColorStop(0, '#3a3a3c'); g.addColorStop(1, '#151516');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y, W, 44);
+    MUSIC_TABS.forEach((t, i) => {
+      const x = (i + 0.5) * (W / 5);
+      if (s.tab === i) { ctx.fillStyle = 'rgba(255,255,255,0.15)'; roundRect(ctx, x - 30, y + 3, 60, 38, 4); ctx.fill(); }
+      ctx.fillStyle = s.tab === i ? '#3a7fdb' : '#9a9a9e';
+      ctx.beginPath(); ctx.arc(x, y + 16, 7, 0, Math.PI * 2); ctx.fill();
+      text(ctx, t, x, y + 37, { font: `bold 9px ${FONT}`, color: s.tab === i ? '#fff' : '#9a9a9e', align: 'center' });
+    });
+    s.tabHits = { y };
+  },
+  tap(x, y, s, os, now) {
+    if (s.view === 'now') {
+      if (inRect(s.hits?.play, x, y)) { if (s.paused) { s.startedAt += now - s.pausedAt; s.paused = false; } else { s.paused = true; s.pausedAt = now; } }
+      else if (inRect(s.hits?.next, x, y)) { s.playing = (s.playing + 1) % SONGS.length; s.startedAt = now; s.paused = false; }
+      else if (inRect(s.hits?.prev, x, y)) { s.playing = (s.playing + SONGS.length - 1) % SONGS.length; s.startedAt = now; s.paused = false; }
+      return;
+    }
+    if (s.tab !== 2) return;
+    const i = Math.floor(y / 44);
+    if (i >= 0 && i < SONGS.length) { s.playing = i; s.startedAt = now; s.paused = false; s.view = 'now'; s.scroll = 0; }
+  },
+  barTap() {},
+};
+// the tab bar sits outside the scroll area, so taps on it arrive through the "bar" path of the core
+music.tabTap = (x, y, s) => { if (y >= H - 44) { s.tab = Math.floor(x / (W / 5)); s.view = 'list'; s.scroll = 0; return true; } return false; };
+
+export const APPS = [messages, calendar, photos, camera, videos, stocks, maps, weather, clock, calculator, notes, settings];
+export const DOCK = [phone, mail, safari, music];
 export const ALL = [...APPS, ...DOCK];
 export { PHOTO_KINDS };
