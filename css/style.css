@@ -52,8 +52,9 @@ body.ready .hint.hide { opacity: 0; }
 
 @media (max-width: 640px) {
   #hud { flex-direction: column; gap: 14px; }
-  body.in-hand .brand { opacity: 0; transition: opacity 0.4s; }
-  body.in-hand #hud { top: auto; bottom: clamp(52px, 9vh, 80px); }
-  body.in-hand @media (prefers-reduced-motion: reduce) {
+  .brand p { font-size: 13px; }
+  .hint { letter-spacing: 0.08em; }
+}
+@media (prefers-reduced-motion: reduce) {
   #stage canvas, #hud, .hint { transition: none; }
 }
