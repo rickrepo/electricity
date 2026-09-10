@@ -7,23 +7,29 @@ photo you choose for the poster.
 
 You walk in at dusk and the phone boots. Drag to look around the room: the
 poster over the desk, two 1200s and a mixer along the wall with two crates
-of records in front of them, the CRT with the N64 and a controller on the
-rug, a nitro buggy on the floor with its transmitter beside it and another
-buggy on the shelf, the window with the curtains, a chair, a clock that
-keeps real time, a door, an architect's lamp on the desk. Click anywhere to
-walk up to the desk, click the phone to pick it up (the camera rolls to the
-phone's own up vector and fits it to your viewport), click the bezel or
-press Esc to put it down, click away to step back. Click a turntable to
-start and stop it. There are no buttons or words on the page: the room is
-the interface.
+of records in front of them, the N64 on a low cabinet with its controller on
+the rug, a nitro buggy on the floor with its transmitter beside it and three
+plywood ramps to jump it off, another buggy on the shelf, the window with
+the curtains, a chair, a clock that keeps real time, a door, an architect's
+lamp on the desk. Click anywhere to walk up to the desk, click the phone to
+pick it up (the camera rolls to the phone's own up vector and fits it to
+your viewport), click the bezel or press Esc to put it down, click away to
+step back. Click a turntable to start and stop it. There are no buttons or
+words on the page: the room is the interface.
+
+While the phone sits on the desk, texts arrive: it buzzes, the screen shows
+who and what, and the slider says "slide to view". Slide, and the thread
+opens. Over the home screen or an app the text comes as a blue alert with
+Close and Reply, and Messages wears a red badge until it is read.
 
 Click the buggy or its transmitter to pick the transmitter up and drive:
 the arrow keys or WASD steer and throttle, or drag anywhere (up for
 throttle, sideways to steer) on a touch screen. The buggy stops at the walls
-and the furniture. Tap, click, or press Esc to put the transmitter down.
+and the furniture, and flies off the lip of any ramp it takes at speed. Tap,
+click, or press Esc to put the transmitter down.
 
-The light is the desk lamp (a spotlight with soft shadows), the window (an
-area light and a low sun), and the glow of the CRT. Corners are darkened in
+The light is the desk lamp (a spotlight with soft shadows) and the window
+(an area light and a low sun). Corners are darkened in
 the geometry, furniture sits on contact shadows, the wood has grain, bump,
 and varnish, the fabrics have a weave, and the edges are rounded.
 
@@ -60,14 +66,13 @@ The phone runs software drawn in the manner of the first iPhone OS:
 - a home screen of fifteen glossy icons over a reflective dock: Messages,
   Calendar, Photos, Camera, Stocks, Maps, Weather, Clock, Calculator, Notes,
   Settings, and Phone, Mail, Safari, iPod;
-- every app does something. Safari has two pages: a line about Ricky, and
-  autismwaitlist.com, which is the real site, live, laid over the screen
-  while the phone is in hand (the address opens it in a tab of its own on
-  browsers that will not frame it; only the pages listed in the code can be
-  reached). Messages and Mail have threads and an inbox. Photos has a camera
-  roll and Camera adds to it (it looks at the room). Maps and Weather are
-  Toronto. Stocks charts, iPod plays, Calculator calculates, Phone dials,
-  Settings toggles airplane mode, brightness, and the wallpaper.
+- every app does something. Safari shows one page, "I'm Ricky. I designed
+  this website", with a link to autismwaitlist.com that opens the real site
+  in a tab of its own (the address field takes no typing, so nothing else is
+  reachable). Messages and Mail have threads and an inbox. Photos has a
+  camera roll and Camera adds to it (it looks at the room). Maps and Weather
+  are Toronto. Stocks charts, iPod plays, Calculator calculates, Phone
+  dials, Settings toggles airplane mode, brightness, and the wallpaper.
 
 The personal things live in the room, not on the phone.
 

@@ -24,18 +24,15 @@ const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); retur
 /* ================================================================== */
 const ABOUT = [
   ['h1', "I'm Ricky."],
-  ['p', 'Toronto. Born in 1989. Thanks for picking up the phone.'],
+  ['p', 'I designed this website. Toronto, born in 1989.'],
   ['h2', 'Also'],
   ['link', 'autismwaitlist.com'],
 ];
 
-// Safari's pages. The first is drawn here; the second is a live web page, laid
-// over the screen while the phone is in hand. Only pages listed here can be
-// reached: the address field takes no typing.
-const PAGES = [
-  { title: "I'm Ricky", url: 'ricky.example', live: false },
-  { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true },
-];
+// The one other place Safari can go. The link opens the real site in a tab of
+// its own; the address field takes no typing, so nothing else is reachable.
+const SITE = 'https://autismwaitlist.com';
+const openSite = () => { const w = window.open(SITE, '_blank', 'noopener'); if (!w) location.href = SITE; };
 
 const safari = {
   id: 'safari', name: 'Safari', top: '#78bcff', bottom: '#1c63c9',
@@ -54,21 +51,11 @@ const safari = {
       blocks.push(b);
       y = b.y + b.h;
     }
-    return { blocks, height: y + 8, X, WIDTH, page: 0 };
+    return { blocks, height: y + 8, X, WIDTH };
   },
   bar() { return { title: '' }; },
-  height(s) { return PAGES[s.page].live ? CONTENT_H - 44 : s.height; },
-  site(s) { return PAGES[s.page].live ? { url: PAGES[s.page].url, rect: { x: 0, y: CONTENT_Y, w: W, h: H - CONTENT_Y - 44 } } : null; },
+  height(s) { return s.height; },
   draw(ctx, s) {
-    if (PAGES[s.page].live) {
-      // a plain page stands in until the live one is laid over it
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, W, CONTENT_H);
-      ctx.fillStyle = '#eef0f3';
-      ctx.fillRect(0, 0, W, 44);
-      for (let i = 0; i < 4; i++) { ctx.fillStyle = i ? '#e6e8ec' : '#d9dce2'; ctx.fillRect(16, 66 + i * 22, i ? 200 - i * 30 : 140, 10); }
-      return;
-    }
     for (const b of s.blocks) {
       const { type, value, y } = b;
       if (type === 'h1') text(ctx, value, s.X, y + 30, { font: `bold 30px ${FONT}`, color: '#111' });
@@ -77,23 +64,22 @@ const safari = {
       else if (type === 'link') { text(ctx, value, s.X, y + 20, { font: `15px ${FONT}`, color: '#1a5cc8' }); ctx.fillStyle = '#1a5cc8'; ctx.fillRect(s.X, y + 23, ctx.measureText(value).width, 1); b.hit = { x: s.X, y: y + 4, w: 200, h: 26 }; }
     }
   },
-  overlay(ctx, s) {
-    const page = PAGES[s.page];
+  overlay(ctx) {
     // top: page title and the address field
-    text(ctx, page.title, W / 2, 32, { font: `bold 12px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
+    text(ctx, "I'm Ricky", W / 2, 32, { font: `bold 12px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
     ctx.fillStyle = '#fff';
     roundRect(ctx, 8, 38, W - 16, 22, 5);
     ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.35)';
     ctx.lineWidth = 1;
     ctx.stroke();
-    text(ctx, page.url.replace(/^https?:\/\//, ''), 16, 50, { font: `13px ${FONT}`, color: '#333', baseline: 'middle' });
+    text(ctx, 'ricky.example', 16, 50, { font: `13px ${FONT}`, color: '#333', baseline: 'middle' });
     ctx.strokeStyle = '#6a7d99';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(W - 20, 49, 5, 0.4, Math.PI * 1.7); ctx.stroke();
     ctx.fillStyle = '#6a7d99';
     ctx.beginPath(); ctx.moveTo(W - 15, 42); ctx.lineTo(W - 13, 48); ctx.lineTo(W - 19, 47); ctx.closePath(); ctx.fill();
-    // bottom toolbar: back, forward, bookmarks, pages
+    // bottom toolbar
     const y = H - 44;
     const g = ctx.createLinearGradient(0, y, 0, H);
     g.addColorStop(0, '#b9c8de'); g.addColorStop(0.5, '#8ea4c2'); g.addColorStop(0.5001, '#7c93b3'); g.addColorStop(1, '#6a83a6');
@@ -104,9 +90,8 @@ const safari = {
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = s.page > 0 ? '#fff' : 'rgba(255,255,255,0.4)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(44, y + 14); ctx.lineTo(34, y + 22); ctx.lineTo(44, y + 30); ctx.stroke();
-    ctx.strokeStyle = s.page < PAGES.length - 1 ? '#fff' : 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(110, y + 14); ctx.lineTo(120, y + 22); ctx.lineTo(110, y + 30); ctx.stroke();
     ctx.fillStyle = '#fff';
     ctx.fillRect(190, y + 13, 18, 20);
@@ -119,22 +104,11 @@ const safari = {
     ctx.fillStyle = '#fff';
     ctx.font = `bold 8px ${FONT}`;
     ctx.textAlign = 'center';
-    ctx.fillText(String(PAGES.length), 278.5, y + 22.5);
+    ctx.fillText('1', 278.5, y + 22.5);
   },
   tap(x, y, s) {
     const link = s.blocks.find((b) => b.type === 'link');
-    if (!PAGES[s.page].live && link?.hit && inRect(link.hit, x, y)) { s.page = 1; s.scroll = 0; }
-  },
-  tabTap(x, y, s) {
-    if (y >= H - 44) {
-      // back and forward step through the pages; the pages button cycles them
-      if (x < 70 && s.page > 0) { s.page--; s.scroll = 0; }
-      else if (x >= 80 && x < 150 && s.page < PAGES.length - 1) { s.page++; s.scroll = 0; }
-      else if (x >= 240) { s.page = (s.page + 1) % PAGES.length; s.scroll = 0; }
-      return;
-    }
-    // the address of a live page opens it in a tab of its own, for browsers that will not frame it
-    if (y >= 36 && y < 62 && PAGES[s.page].live) window.open(PAGES[s.page].url, '_blank', 'noopener');
+    if (link?.hit && inRect(link.hit, x, y)) openSite();
   },
 };
 
@@ -142,10 +116,25 @@ const safari = {
 /* Messages                                                            */
 /* ================================================================== */
 const THREADS = [
-  { who: 'Mom', initials: 'M', color: '#c2578f', time: '2:41 PM', msgs: [[0, 'Did the phone come out ok?'], [1, 'It boots. It even unlocks.'], [0, 'Proud of you. Eat something.'], [1, 'Eating.'], [0, 'Call me back x4']] },
+  { who: 'Mom', initials: 'M', color: '#c2578f', time: '2:41 PM', unread: 0, msgs: [[0, 'Did the phone come out ok?'], [1, 'It boots. It even unlocks.'], [0, 'Proud of you. Eat something.'], [1, 'Eating.'], [0, 'Call me back x4']] },
   { who: 'Deck crew', initials: 'DC', color: '#3a7fdb', time: '11:05 AM', msgs: [[0, 'Bringing the 1200s Saturday?'], [1, 'Both. And the crate.'], [0, 'Bring the good needle this time'], [1, 'It was the good needle.']] },
   { who: 'Race day', initials: 'RD', color: '#e8842e', time: 'Yesterday', msgs: [[0, 'Track opens at 9. Bring fuel.'], [1, 'Already mixed 20%.'], [0, 'Clutch bell?'], [1, 'Ordering one now.']] },
 ];
+
+// Texts that arrive while the phone sits on the desk. The list and the thread
+// are laid out again the next time they are drawn.
+export const inbox = {
+  receive(i, msg, time) {
+    const t = THREADS[i];
+    t.msgs.push([0, msg]);
+    t.time = time;
+    t.unread = (t.unread || 0) + 1;
+    t.stale = true;
+    return t;
+  },
+  read(i) { THREADS[i].unread = 0; },
+  get unread() { return THREADS.reduce((n, t) => n + (t.unread || 0), 0); },
+};
 
 function layoutThread(m, thread) {
   const out = [];
@@ -168,9 +157,11 @@ const messages = {
   back(s) { if (s.view < 0) return false; s.view = -1; s.scroll = 0; return true; },
   height(s, os) {
     if (s.view < 0) return THREADS.length * 70;
+    if (THREADS[s.view].stale) { delete s.layouts[s.view]; THREADS[s.view].stale = false; }
     s.layouts[s.view] ||= layoutThread(os.measure, THREADS[s.view]);
     return s.layouts[s.view].height;
   },
+  show(s, i) { s.view = i; s.scroll = 0; inbox.read(i); },
   draw(ctx, s, os) {
     if (s.view < 0) {
       ctx.fillStyle = '#fff';
@@ -181,11 +172,13 @@ const messages = {
         text(ctx, t.who, 66, y + 28, { font: `bold 17px ${FONT}` });
         text(ctx, t.msgs[t.msgs.length - 1][1], 66, y + 50, { font: `14px ${FONT}`, color: '#6b6f78' });
         text(ctx, t.time, W - 30, y + 28, { font: `13px ${FONT}`, color: '#3a7fdb', align: 'right' });
+        if (t.unread) { ctx.fillStyle = '#3a7fdb'; ctx.beginPath(); ctx.arc(12, y + 35, 5, 0, Math.PI * 2); ctx.fill(); }
         chevron(ctx, W - 14, y + 35);
         separator(ctx, 66, y + 69, W - 66);
       });
       return;
     }
+    if (THREADS[s.view].stale) { delete s.layouts[s.view]; THREADS[s.view].stale = false; }
     const lay = (s.layouts[s.view] ||= layoutThread(os.measure, THREADS[s.view]));
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, W, lay.height + 400);
@@ -197,7 +190,7 @@ const messages = {
   tap(x, y, s) {
     if (s.view >= 0) return;
     const i = Math.floor(y / 70);
-    if (i >= 0 && i < THREADS.length) { s.view = i; s.scroll = 0; }
+    if (i >= 0 && i < THREADS.length) messages.show(s, i);
   },
 };
 
@@ -375,24 +368,17 @@ function cameraScene(ctx, now, x0 = 0, y0 = 0, w = W, h = H - 64) {
   skyline(ctx, 32, 126, 88, 30, '#150609');
   dunkSilhouette(ctx, 72, 118, 0.36, { color: '#0b0507', ball: '#0b0507' });
   ctx.restore();
-  // the TV with the console on top
-  ctx.fillStyle = '#3b3733';
-  roundRect(ctx, 170, 140, 120, 90, 8); ctx.fill();
-  ctx.fillStyle = '#1a2230';
-  roundRect(ctx, 180, 150, 86, 70, 5); ctx.fill();
-  ctx.fillStyle = 'rgba(120,160,220,0.25)';
-  roundRect(ctx, 184, 154, 78, 30, 4); ctx.fill();
-  ctx.fillStyle = '#7d8187';
-  ctx.beginPath(); ctx.arc(278, 165, 5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(278, 185, 5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#44403c';
-  roundRect(ctx, 176, 118, 108, 22, 6); ctx.fill();
-  ctx.fillStyle = '#2b2825';
-  ctx.fillRect(206, 118, 48, 6);
-  ctx.fillStyle = '#d63a2f';
-  ctx.beginPath(); ctx.arc(186, 132, 2.5, 0, Math.PI * 2); ctx.fill();
+  // the cabinet with the console on top
   ctx.fillStyle = '#5a4a3c';
-  ctx.fillRect(170, 230, 120, 60);
+  ctx.fillRect(170, 196, 120, 94);
+  ctx.fillStyle = '#4a3c30';
+  ctx.fillRect(170, 196, 120, 6);
+  ctx.fillStyle = '#44403c';
+  roundRect(ctx, 176, 174, 108, 22, 6); ctx.fill();
+  ctx.fillStyle = '#2b2825';
+  ctx.fillRect(206, 174, 48, 6);
+  ctx.fillStyle = '#d63a2f';
+  ctx.beginPath(); ctx.arc(186, 188, 2.5, 0, Math.PI * 2); ctx.fill();
   n64Controller(ctx, 232, 316, 70);
   // the buggy doing laps of the rug
   const cx = ((now / 28) % (w + 260)) - 130;

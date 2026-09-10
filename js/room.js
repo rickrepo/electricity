@@ -1,10 +1,10 @@
 // The room: a den for someone born in 1989, at dusk, in millimetres.
 // A desk against the back wall with the phone on it and the poster above,
 // two direct-drive turntables and a mixer with two crates of records in
-// front, a CRT running a racing game with the N64 under it, a nitro buggy on
-// the rug with its transmitter beside it (pick the transmitter up and drive),
-// another buggy on the shelf, curtains, a chair, a clock, a door, and an
-// architect's lamp on the desk.
+// front, the N64 on a low cabinet with its controller on the rug, a nitro
+// buggy with its transmitter beside it (pick the transmitter up and drive)
+// and three plywood ramps to jump it off, another buggy on the shelf,
+// curtains, a chair, a clock, a door, and an architect's lamp on the desk.
 // Boxes, cylinders, and canvas-drawn textures; the light does the rest.
 import * as THREE from '../vendor/three.min.js';
 import { RoundedBoxGeometry, RectAreaLightUniformsLib, mergeGeometries } from '../vendor/three.min.js';
@@ -139,25 +139,6 @@ function duskTexture() {
   ctx.fillRect(0, 262, 256, 58);
   for (let x = 0; x < 256; x += 30) { const hh = 20 + rnd() * 30; ctx.fillRect(x, 262 - hh, 24, hh); if (rnd() > 0.5) { ctx.fillStyle = '#f2c86b'; ctx.fillRect(x + 8, 262 - hh + 8, 5, 6); ctx.fillStyle = '#1d1a26'; } }
   for (let x = 10; x < 256; x += 44) { ctx.beginPath(); ctx.arc(x, 250, 18, 0, Math.PI * 2); ctx.fill(); }
-  return c;
-}
-
-function gameTexture() {
-  const c = canvas(320, 240), ctx = c.getContext('2d');
-  const sky = ctx.createLinearGradient(0, 0, 0, 120);
-  sky.addColorStop(0, '#3f8fe0'); sky.addColorStop(1, '#a9d6ff');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, 320, 120);
-  ctx.fillStyle = '#5da33c'; ctx.fillRect(0, 120, 320, 120);
-  ctx.fillStyle = '#6b6b70';
-  ctx.beginPath(); ctx.moveTo(60, 240); ctx.lineTo(140, 120); ctx.lineTo(180, 120); ctx.lineTo(300, 240); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#f2e14b';
-  for (let i = 0; i < 6; i++) { const t = i / 6; ctx.fillRect(160 - 3 * (1 + t * 3), 120 + t * 120, 6 * (1 + t * 3), 10 + t * 8); }
-  ctx.fillStyle = '#e03a2f'; ctx.fillRect(120, 172, 50, 30);
-  ctx.fillStyle = '#111'; ctx.fillRect(114, 190, 14, 16); ctx.fillRect(162, 190, 14, 16);
-  ctx.fillStyle = '#2f6fd0'; ctx.fillRect(196, 148, 26, 16);
-  // scanlines
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  for (let y = 0; y < 240; y += 3) ctx.fillRect(0, y, 320, 1);
   return c;
 }
 
@@ -744,13 +725,43 @@ export function createRoom({ scene }) {
     g.traverse((m) => { if (m.isMesh && !wheels.some((w) => w.pivot.getObjectById(m.id))) parts.push(m); });
     const meshes = bakeInto(g, parts, { cast: false });
     for (const w of wheels) w.wheel.traverse((m) => { if (m.isMesh) { m.castShadow = false; meshes.push(m); } });
-    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(460, 300), blob);
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 1.5;
-    g.add(shadow);
-      return { group: g, meshes, wheels, yaw: ry, v: 0, steer: 0, throttle: 0, steerIn: 0, driving: false, x, z, input(t, st) { this.throttle = t; this.steerIn = st; } };
+      g.rotation.order = 'YZX'; // yaw, then pitch about the car's own axle line, then roll along its length
+    return { group: g, meshes, wheels, yaw: ry, v: 0, vy: 0, y: 0, air: false, slopeVy: 0, steer: 0, throttle: 0, steerIn: 0, driving: false, x, z, input(t, st) { this.throttle = t; this.steerIn = st; } };
   };
   const car = makeBuggy(mats.red, { x: -350, y: 0, z: 520, ry: -0.55, live: true });
+  // its contact shadow stays on the floor and fades as the car leaves it
+  const carShadowMat = blob.clone();
+  const carShadow = new THREE.Mesh(new THREE.PlaneGeometry(460, 300), carShadowMat);
+  carShadow.rotation.set(-Math.PI / 2, 0, 0);
+  carShadow.position.set(car.x, 1.5, car.z);
+  carShadow.rotation.z = car.yaw;
+  group.add(carShadow);
+  /* three plywood ramps: the buggy leaves the top edge and flies */
+  const RAMPS = [{ x: 900, z: 700, yaw: Math.PI, len: 520, w: 420, h: 130 }, { x: -600, z: 1500, yaw: 0, len: 520, w: 420, h: 130 }, { x: 200, z: 2150, yaw: Math.PI / 2, len: 440, w: 380, h: 105 }];
+  const ply = new THREE.MeshStandardMaterial({ map: tex(wood.map, { repeat: [2, 1] }), color: 0xe8cfa2, roughness: 0.85 });
+  for (const r of RAMPS) {
+    const shape = new THREE.Shape([new THREE.Vector2(-r.len / 2, 0), new THREE.Vector2(r.len / 2, 0), new THREE.Vector2(r.len / 2, r.h)]);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: r.w, bevelEnabled: false });
+    geo.translate(0, 0, -r.w / 2);
+    const m = new THREE.Mesh(geo, ply);
+    m.position.set(r.x, 0.5, r.z);
+    m.rotation.y = r.yaw;
+    m.castShadow = m.receiveShadow = true;
+    group.add(m);
+    // two battens under the lip
+    for (const dz of [-r.w / 2 + 30, r.w / 2 - 30]) { const b = box(r.len - 40, 18, 24, mats.charcoal, { cast: false }); b.position.set(r.x, 9, r.z); b.rotation.y = r.yaw; b.translateZ(dz); }
+    shadowBlob(r.len + 200, r.w + 200, r.x, 0, r.z, r.yaw);
+  }
+  // the floor's height at a point: the top of whichever ramp is there, else 0
+  const groundAt = (px, pz) => {
+    let y = 0;
+    for (const r of RAMPS) {
+      const dx = px - r.x, dz = pz - r.z;
+      const lx = dx * Math.cos(r.yaw) - dz * Math.sin(r.yaw), lz = dx * Math.sin(r.yaw) + dz * Math.cos(r.yaw);
+      if (Math.abs(lz) <= r.w / 2 && lx >= -r.len / 2 && lx <= r.len / 2) y = Math.max(y, (r.h * (lx + r.len / 2)) / r.len);
+    }
+    return y;
+  };
   makeBuggy(mats.blue, { x: -ROOM.halfW + 120, y: 1665, z: djZ - 200, ry: Math.PI / 2 });
   // the transmitter: two sticks, a few trims, a long antenna
   const remote = new THREE.Group();
@@ -792,40 +803,37 @@ export function createRoom({ scene }) {
       if (m === dx0) x = b.x0 - CAR_R; else if (m === dx1) x = b.x1 + CAR_R; else if (m === dz0) z = b.z0 - CAR_R; else z = b.z1 + CAR_R;
       hit = true;
     }
+    // up the ramps and off their lips: on the ground the car follows the surface
+    // and remembers how fast it was rising; when the ground drops away it flies
+    const gy = groundAt(x, z);
+    if (!c.air && gy - c.y > 60) { x = c.x; z = c.z; hit = true; }
+    else if (c.air) {
+      c.vy -= 3500 * dt;
+      c.y += c.vy * dt;
+      if (c.y <= gy) { c.y = gy; c.air = false; c.vy = 0; c.v *= 0.9; }
+    } else if (gy < c.y - 6) { c.air = true; c.vy = c.slopeVy * 1.5; c.y += c.vy * dt; }
+    else { c.slopeVy = (gy - c.y) / Math.max(dt, 1e-3); c.y = gy; }
     if (hit) c.v *= -0.25;
     c.x = x;
     c.z = z;
-    c.group.position.set(x, 0, z);
+    const fx = Math.cos(c.yaw), fz = -Math.sin(c.yaw);
+    const pitch = c.air ? c.group.rotation.z + (-0.18 - c.group.rotation.z) * Math.min(1, dt * 2.5) : Math.atan2(groundAt(x + fx * 110, z + fz * 110) - groundAt(x - fx * 110, z - fz * 110), 220);
+    c.group.position.set(x, c.y, z);
     c.group.rotation.y = c.yaw;
-    c.group.rotation.z = -c.steer * (c.v / 2100) * 0.12;
+    c.group.rotation.z = pitch;
+    c.group.rotation.x = c.steer * (c.v / 2100) * 0.12;
+    carShadow.position.set(x, 1.5, z);
+    carShadow.rotation.z = c.yaw;
+    carShadowMat.opacity = Math.max(0.15, 1 - c.y / 350);
     for (const w of c.wheels) { w.wheel.rotation.z -= (c.v / 42) * dt; if (w.front) w.pivot.rotation.y = c.steer; }
   };
 
-  /* the CRT with the N64, right wall */
+  /* a low cabinet on the right wall, the N64 on top */
   const tvX = ROOM.halfW - 420, tvZ = 150;
   rbox(700, 480, 460, 8, mats.darkWood, { x: tvX, y: 240, z: tvZ });
-  box(660, 20, 420, mats.darkWood, { x: tvX, y: 260, z: tvZ });
   shadowBlob(1000, 800, tvX, 0, tvZ);
-  const tv = new THREE.Group();
-  tv.position.set(tvX, 480, tvZ);
-  tv.rotation.y = -Math.PI / 2;
-  group.add(tv);
-  rbox(600, 460, 480, 40, mats.charcoal, { y: 230, parent: tv });
-  const screenMat = new THREE.MeshBasicMaterial({ map: tex(gameTexture()) });
-  screenMat.map.wrapS = screenMat.map.wrapT = THREE.ClampToEdgeWrapping;
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(500, 380), screenMat);
-  screen.position.set(0, 250, 242);
-  tv.add(screen);
-  const tvGlass = new THREE.Mesh(new THREE.PlaneGeometry(520, 400), new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 0.1, transparent: true, opacity: 0.18, clearcoat: 1 }));
-  tvGlass.position.set(0, 250, 243);
-  tv.add(tvGlass);
-  rbox(600, 60, 12, 3, mats.black, { y: 30, z: 240, parent: tv, cast: false });
-  cyl(10, 8, mats.grey, { x: 240, y: 30, z: 246, rx: Math.PI / 2, parent: tv, cast: false });
-  const tvGlow = new THREE.PointLight(0x8fb4ff, 0.9, 1600, 0);
-  tvGlow.position.set(tvX - 300, 700, tvZ);
-  group.add(tvGlow);
   const n64 = new THREE.Group();
-  n64.position.set(tvX - 60, 40, tvZ + 60);
+  n64.position.set(tvX - 40, 480, tvZ + 40);
   n64.rotation.y = -Math.PI / 2 + 0.2;
   group.add(n64);
   rbox(260, 70, 190, 14, mats.charcoal, { y: 35, parent: n64 });
@@ -846,7 +854,7 @@ export function createRoom({ scene }) {
   for (const [dx, dz] of [[72, -34], [62, -22], [82, -22], [72, -10]]) cyl(5, 6, new THREE.MeshStandardMaterial({ color: 0xf2c230 }), { x: dx, y: 33, z: dz, parent: pad, cast: false });
   cyl(14, 14, mats.black, { y: 37, z: 40, parent: pad, cast: false });
   cyl(8, 10, mats.grey, { y: 48, z: 40, parent: pad, cast: false });
-  group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(560, 12, 1300), new THREE.Vector3(760, 6, 1150), new THREE.Vector3(1100, 6, 700), new THREE.Vector3(1450, 8, 330), new THREE.Vector3(tvX - 200, 30, tvZ + 60)]), 40, 3, 6, false), mats.charcoal));
+  group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(560, 12, 1300), new THREE.Vector3(760, 6, 1150), new THREE.Vector3(1100, 6, 700), new THREE.Vector3(1450, 8, 330), new THREE.Vector3(tvX - 370, 12, tvZ + 90), new THREE.Vector3(tvX - 356, 470, tvZ + 70), new THREE.Vector3(tvX - 200, 500, tvZ + 60)]), 48, 3, 6, false), mats.charcoal));
 
   /* a desk chair, pulled out */
   const chair = new THREE.Group();
@@ -876,7 +884,7 @@ export function createRoom({ scene }) {
      draw calls instead of a few hundred. The decks stay separate (they spin
      and answer clicks), as do the shaded room planes, the poster (its
      geometry changes when the photo arrives), and the screens. */
-  const keep = new Set([poster, gloss, frame, clock, clockRing, screen, tvGlass, sky, bulb, dome, floor, ceiling, rugMesh]);
+  const keep = new Set([poster, gloss, frame, clock, clockRing, sky, bulb, dome, floor, ceiling, rugMesh]);
   for (const d of decks) { d.group.traverse((m) => keep.add(m)); for (const m of d.meshes) keep.add(m); }
   car.group.traverse((m) => keep.add(m));
   remote.traverse((m) => keep.add(m));
@@ -920,9 +928,7 @@ export function createRoom({ scene }) {
     update(dt) {
       elapsed += dt;
       for (const d of decks) if (d.playing) d.platter.rotation.y += dt * Math.PI * 2 * (33.33 / 60);
-      if (car.driving || car.v !== 0) stepCar(dt);
-      screenMat.map.offset.x = Math.sin(elapsed * 6) * 0.002;
-      tvGlow.intensity = 0.8 + Math.sin(elapsed * 9) * 0.08 + Math.sin(elapsed * 23) * 0.05;
+      if (car.driving || car.v !== 0 || car.air) stepCar(dt);
       const minute = Math.floor(Date.now() / 60000);
       if (minute !== clockMinute) { clockMinute = minute; face.draw(); clockTex.needsUpdate = true; }
     },

@@ -2,8 +2,9 @@
 // desk, two 1200s with crates of records, the N64 under the CRT, a nitro
 // buggy on the rug with its transmitter. The phone on the desk boots when
 // you walk in. Click anywhere to walk up to the desk, click the phone to
-// pick it up, slide to unlock. Click a deck to start it; click the buggy or
-// its transmitter to drive it around. Safari shows the other site live.
+// pick it up, slide to unlock. Texts arrive while it sits there, and it
+// buzzes. Click a deck to start it; click the buggy or its transmitter to
+// drive it around and off the ramps.
 import * as THREE from '../vendor/three.min.js';
 import { OrbitControls, RoundedBoxGeometry } from '../vendor/three.min.js';
 import { createPhone, SPEC } from './phone.js';
@@ -263,34 +264,6 @@ async function main() {
     flyTo(back, 850, () => settle(saved.state));
   };
 
-  /* ---------- the other site: a real page inside Safari while the phone is in hand ---------- */
-  // Safari's second page is a live web page. The screen is a flat rectangle
-  // facing the camera when the phone is in hand, so a frame laid over the
-  // page area of the screen lines up with it exactly.
-  const site = document.createElement('iframe');
-  site.id = 'site';
-  site.hidden = true;
-  site.title = 'Web page';
-  site.referrerPolicy = 'no-referrer';
-  document.body.append(site);
-  const siteCorner = new THREE.Vector3();
-  const placeSite = () => {
-    const page = state === 'up' && !move.active ? os.site : null;
-    if (!page) { if (!site.hidden) site.hidden = true; return; }
-    if (site.dataset.url !== page.url) { site.dataset.url = page.url; site.src = page.url; }
-    const toCss = (px, py) => {
-      siteCorner.set((px / os.width - 0.5) * SPEC.screen.width, (0.5 - py / os.height) * SPEC.screen.height, 0);
-      phone.screen.localToWorld(siteCorner).project(camera);
-      return { x: ((siteCorner.x + 1) / 2) * innerWidth, y: ((1 - siteCorner.y) / 2) * innerHeight };
-    };
-    const a = toCss(page.rect.x, page.rect.y), b = toCss(page.rect.x + page.rect.w, page.rect.y + page.rect.h);
-    site.style.left = `${Math.min(a.x, b.x)}px`;
-    site.style.top = `${Math.min(a.y, b.y)}px`;
-    site.style.width = `${Math.abs(b.x - a.x)}px`;
-    site.style.height = `${Math.abs(b.y - a.y)}px`;
-    if (site.hidden) site.hidden = false;
-  };
-
   /* ---------- pointer: walk, pick up, press buttons, use the screen ---------- */
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -434,6 +407,7 @@ async function main() {
   document.addEventListener('visibilitychange', () => { paceHold = performance.now() + 2000; });
 
   /* ---------- loop ---------- */
+  const NUDGES = [[9000, 'Hey!', false], [26000, 'Pick up your phone', false], [75000, 'Did you finish the website? Open Safari and show me', true]];
   const screenWorld = new THREE.Vector3();
   let first = true;
   let lastFrame = performance.now();
@@ -476,6 +450,15 @@ async function main() {
       look.copy(controls.target);
     }
 
+    // a text arriving: two short bursts of a 25 Hz shiver
+    const sinceBuzz = now - os.buzzAt;
+    if (os.buzzAt && sinceBuzz < 700) {
+      const on = sinceBuzz < 280 || (sinceBuzz > 360 && sinceBuzz < 640);
+      const k = on ? Math.sin(sinceBuzz * 0.16) : 0;
+      phone.group.position.x = k * 0.7;
+      phone.group.rotation.z = k * 0.012;
+    } else if (phone.group.position.x !== 0) { phone.group.position.x = 0; phone.group.rotation.z = 0; }
+
     for (const [mesh, a] of pressAnim) {
       const t = (now - a.start) / 160;
       if (t >= 1) { mesh.position.copy(a.rest); pressAnim.delete(mesh); continue; }
@@ -495,13 +478,19 @@ async function main() {
     if (!lateShadow && now - started > 2500) { lateShadow = true; shadowFrames = 1; }
     if (shadowFrames > 0) { renderer.shadowMap.needsUpdate = true; shadowFrames--; }
     renderer.render(scene, camera);
-    placeSite();
     pace(now, frame);
     if (fpsBox) {
       fpsFrames++;
       if (now - fpsSince >= 500) { fpsBox.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} fps · ${renderer.info.render.calls} draws · ${(renderer.info.render.triangles / 1000).toFixed(0)}k tris · ${dprSteps[dprIndex]}x · screen ${os.scale}x`; fpsFrames = 0; fpsSince = now; }
     }
-    if (first) { first = false; document.body.classList.add('ready'); setTimeout(() => os.boot(), reduced ? 200 : 1600); }
+    if (first) {
+      first = false;
+      document.body.classList.add('ready');
+      const bootIn = reduced ? 200 : 1600;
+      setTimeout(() => os.boot(), bootIn);
+      // texts from Mom while the phone sits on the desk, to get you to pick it up
+      for (const [at, msg, always] of NUDGES) setTimeout(() => { if (os.mode === 'off' || os.mode === 'boot') return; if (always || os.mode === 'lock') os.receive(0, msg); }, bootIn + at);
+    }
   };
 
   /* ---------- loading: everything the GPU will need, before the room appears ---------- */

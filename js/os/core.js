@@ -3,9 +3,9 @@
 // a canvas pixel on about one device pixel when the phone is in hand. The
 // physical buttons drive it: home goes home or wakes it, sleep puts it to
 // sleep. The canvas is redrawn only when something on it changes.
-import { W, H, STATUS_H, CONTENT_Y, FONT, clamp, roundRect, navBar, pinstripes, inRect, clockText } from './ui.js';
+import { W, H, STATUS_H, CONTENT_Y, FONT, clamp, roundRect, navBar, pinstripes, inRect, clockText, wrapLines } from './ui.js';
 import { ICON, renderAtlas } from './icons.js';
-import { APPS, DOCK, ALL, PHOTO_KINDS } from './apps.js';
+import { APPS, DOCK, ALL, PHOTO_KINDS, inbox } from './apps.js';
 import { earthWallpaper, rippleWallpaper, makePhoto } from './art.js';
 
 let S = 2;
@@ -16,6 +16,7 @@ const COLS = [16, 93, 170, 247];
 const ROWS = [30, 117, 204, 291];
 const DOCK_Y = 389;
 const DOCK_ICON_Y = 404;
+const ALERT = { x: 30, y: 150, w: 260, h: 132, close: { x: 42, y: 238, w: 114, h: 32 }, reply: { x: 164, y: 238, w: 114, h: 32 } };
 const easeOut = (t) => 1 - (1 - t) ** 3;
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
@@ -36,6 +37,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     mode: 'off', since: 0, last: -1e9, wasHome: false, dirty: true, minute: -1,
     knob: 0, releaseAt: 0, releaseFrom: 0,
     app: null, appRect: null, pressed: null, states: {},
+    alert: null, buzzAt: 0,
     listeners: new Set(),
   };
   const ptr = { active: false, mode: null, x0: 0, y0: 0, t0: 0, moved: false, lastY: 0, lastT: 0, vel: 0 };
@@ -44,13 +46,14 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   const os = {
     settings, photos, measure,
     addPhoto(c, caption) { photos.unshift({ canvas: c, caption }); st.dirty = true; },
-    open(id) {
+    open(id, setup) {
       const app = ALL.find((a) => a.id === id);
       if (!app) return;
       st.app = app;
       st.appRect = iconRect(ALL.indexOf(app));
       const s = appState(app);
       s.scroll = 0;
+      setup?.(app, s);
       setMode('app', performance.now());
     },
     home() { if (st.mode === 'app') setMode('closing', performance.now()); },
@@ -127,6 +130,22 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       st.knob = st.releaseFrom * (1 - easeOut(t));
       if (t >= 1) st.releaseAt = 0;
     }
+    if (st.alert) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      roundRect(ctx, 16, 128, W - 32, 78, 10);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold 16px ${FONT}`;
+      ctx.fillText(st.alert.who, 30, 152);
+      ctx.font = `15px ${FONT}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      wrapLines(ctx, st.alert.text, W - 60).slice(0, 2).forEach((l, i) => ctx.fillText(l, 30, 174 + i * 19));
+    }
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fillRect(0, 400, W, 80);
     ctx.fillStyle = 'rgba(255,255,255,0.14)';
@@ -147,8 +166,9 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       const tx = TRACK.x + KNOB.w + KNOB.pad + (TRACK.w - KNOB.w - KNOB.pad) / 2;
       ctx.font = `300 22px ${FONT}`;
       ctx.textAlign = 'center';
+      const label = st.alert ? 'slide to view' : 'slide to unlock';
       ctx.fillStyle = `rgba(255,255,255,${0.35 * textAlpha})`;
-      ctx.fillText('slide to unlock', tx, 449);
+      ctx.fillText(label, tx, 449);
       const phase = (now / 2600) % 1;
       const bx = tx - 100 + phase * 230;
       const sg = ctx.createLinearGradient(bx - 40, 0, bx + 40, 0);
@@ -156,7 +176,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       sg.addColorStop(0.5, `rgba(255,255,255,${0.9 * textAlpha})`);
       sg.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = sg;
-      ctx.fillText('slide to unlock', tx, 449);
+      ctx.fillText(label, tx, 449);
     }
     const kx = TRACK.x + KNOB.pad + st.knob * TRAVEL;
     const ky = TRACK.y + KNOB.pad;
@@ -242,8 +262,67 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       roundRect(ctx, r.x, r.y, ICON, ICON, 10);
       ctx.fill();
     }
+    const unread = inbox.unread;
+    if (unread) {
+      // the red badge on Messages
+      const r = iconRect(ALL.findIndex((a) => a.id === 'messages'));
+      const bx = r.x + ICON - 4, by = r.y + 4;
+      ctx.fillStyle = '#e0301e';
+      ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold 13px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(unread), bx, by + 0.5);
+      ctx.textBaseline = 'alphabetic';
+    }
     statusBar();
   }
+  // An arriving text over the home screen or an app, the way the first iPhone
+  // showed one: a blue panel with the sender, the text, Close and Reply.
+  function drawAlert() {
+    const a = ALERT;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, W, H);
+    const g = ctx.createLinearGradient(0, a.y, 0, a.y + a.h);
+    g.addColorStop(0, 'rgba(48,72,130,0.96)');
+    g.addColorStop(1, 'rgba(18,34,74,0.96)');
+    roundRect(ctx, a.x, a.y, a.w, a.h, 12);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold 17px ${FONT}`;
+    ctx.fillText(st.alert.who, W / 2, a.y + 30);
+    ctx.font = `15px ${FONT}`;
+    wrapLines(ctx, st.alert.text, a.w - 30).slice(0, 2).forEach((l, i) => ctx.fillText(l, W / 2, a.y + 54 + i * 19));
+    for (const [b, label, strong] of [[a.close, 'Close', false], [a.reply, 'Reply', true]]) {
+      const bg = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
+      bg.addColorStop(0, strong ? '#8fb4e8' : '#6d84ad');
+      bg.addColorStop(1, strong ? '#3a6dc0' : '#3b4f7a');
+      roundRect(ctx, b.x, b.y, b.w, b.h, 8);
+      ctx.fillStyle = bg;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold 15px ${FONT}`;
+      ctx.fillText(label, b.x + b.w / 2, b.y + 21);
+    }
+  }
+  const openThread = (i, now) => {
+    st.alert = null;
+    os.open('messages', (app, s) => app.show(s, i));
+    st.since = now;
+  };
 
   /* ---------- the app runtime ---------- */
   const appState = (app) => {
@@ -353,7 +432,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         drawLock(now, false);
         ctx.globalAlpha = 1;
         statusBar();
-        if (k >= 1) { st.knob = 0; setMode('home', now); }
+        if (k >= 1) { st.knob = 0; if (st.alert) openThread(st.alert.thread, now); else setMode('home', now); }
         break;
       }
       case 'home':
@@ -386,6 +465,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         break;
       }
     }
+    if (st.alert && (st.mode === 'home' || st.mode === 'app')) drawAlert();
     if (st.mode !== 'off' && settings.brightness < 1) {
       ctx.fillStyle = `rgba(0,0,0,${(1 - settings.brightness) * 0.8})`;
       ctx.fillRect(0, 0, W, H);
@@ -410,6 +490,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   function down(x, y, now = performance.now()) {
     st.dirty = true;
     Object.assign(ptr, { active: true, mode: null, x0: x, y0: y, t0: now, moved: false, lastY: y, lastT: now, vel: 0 });
+    if (st.alert && (st.mode === 'home' || st.mode === 'app')) { ptr.mode = 'alert'; return true; }
     if (st.mode === 'lock') {
       const kx = TRACK.x + KNOB.pad + st.knob * TRAVEL, ky = TRACK.y + KNOB.pad;
       if (x < kx - 8 || x > kx + KNOB.w + 8 || y < ky - 10 || y > ky + KNOB.h + 10) { ptr.active = false; return false; }
@@ -467,6 +548,11 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     ptr.active = false;
     st.dirty = true;
     const tap = !ptr.moved && now - ptr.t0 < 700;
+    if (ptr.mode === 'alert') {
+      if (inRect(ALERT.close, x, y)) st.alert = null;
+      else if (inRect(ALERT.reply, x, y)) openThread(st.alert.thread, now);
+      return;
+    }
     if (ptr.mode === 'knob') {
       if (st.knob > 0.96) { st.knob = 1; setMode('unlocking', now); }
       else { st.releaseAt = now; st.releaseFrom = st.knob; }
@@ -545,6 +631,19 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       else this.sleep(now);
     },
     open: os.open,
+    // a text arrives: it lands in its thread, the phone buzzes, and an alert
+    // shows unless that thread is already open
+    receive(i, msg, now = performance.now()) {
+      const t = inbox.receive(i, msg, clockText().time + ' ' + clockText().ampm);
+      const reading = st.mode === 'app' && st.app?.id === 'messages' && appState(st.app).view === i;
+      if (reading) inbox.read(i);
+      else st.alert = { who: t.who, text: msg, thread: i };
+      st.buzzAt = now;
+      if (st.mode === 'off') setMode('waking', now);
+      st.dirty = true;
+    },
+    get buzzAt() { return st.buzzAt; },
+    get alert() { return st.alert; },
     pointer: { down, move, up },
   };
 }
