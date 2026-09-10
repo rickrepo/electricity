@@ -43,6 +43,10 @@ body.in-hand #stage::after { opacity: 0.35; }
 #loading .bar i { display: block; height: 100%; width: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease; }
 #loading.done { opacity: 0; pointer-events: none; }
 
+/* the other site, laid over Safari's page area while the phone is in hand */
+#site { position: fixed; z-index: 3; border: 0; background: #fff; }
+#site[hidden] { display: none; }
+
 .fail { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: var(--bg); text-align: center; font-size: 16px; line-height: 1.5; }
 .fail[hidden] { display: none; }
 .fail p { max-width: 40ch; margin: 0; }

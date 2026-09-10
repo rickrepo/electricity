@@ -615,6 +615,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       if (!layer) { layer = document.createElement('canvas'); layer.width = W * S; layer.height = H * S; }
     },
     boot(now = performance.now()) { if (st.mode === 'off') setMode('boot', now); },
+    // straight to the lock screen, no boot: the phone is already on
+    on(now = performance.now()) { if (st.mode === 'off') setMode('lock', now); },
     wake(now = performance.now()) { if (st.mode === 'off') setMode('waking', now); },
     sleep(now = performance.now()) {
       if (st.mode === 'off' || st.mode === 'boot' || st.mode === 'sleeping') return;
@@ -644,6 +646,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       st.dirty = true;
     },
     get buzzAt() { return st.buzzAt; },
+    dismiss() { st.alert = null; st.dirty = true; },
     get alert() { return st.alert; },
     pointer: { down, move, up },
   };

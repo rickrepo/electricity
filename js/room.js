@@ -2,9 +2,9 @@
 // A desk against the back wall with the phone on it and the poster above,
 // two direct-drive turntables and a mixer with two crates of records in
 // front, the N64 on a low cabinet with its controller on the rug, a nitro
-// buggy with its transmitter beside it (pick the transmitter up and drive)
-// and three plywood ramps to jump it off, another buggy on the shelf,
-// curtains, a chair, a clock, a door, and an architect's lamp on the desk.
+// buggy (click it to drive) and three plywood ramps to jump it off, another
+// buggy on the shelf, curtains, a clock, a door, and an architect's lamp on
+// the desk.
 // Boxes, cylinders, and canvas-drawn textures; the light does the rest.
 import * as THREE from '../vendor/three.min.js';
 import { RoundedBoxGeometry, RectAreaLightUniformsLib, mergeGeometries } from '../vendor/three.min.js';
@@ -250,7 +250,6 @@ export function createRoom({ scene }) {
   const deskWood = woodMaps({ base: '#7a4a2a', dark: '#4a2a14', light: '#96603a', planks: 3 });
   const rug = rugMaps();
   const sheet = fabricMaps('#efe9dd', 256, 2);
-  const chairCloth = fabricMaps('#2b2d33', 256, 3);
   const curtain = fabricMaps('#7a6a55', 256, 2);
   const mats = {
     floor: new THREE.MeshStandardMaterial({ map: tex(wood.map, { repeat: [4, 3] }), bumpMap: tex(wood.bump, { repeat: [4, 3], srgb: false }), bumpScale: 1.4, roughnessMap: tex(wood.rough, { repeat: [4, 3], srgb: false }), roughness: 0.9, metalness: 0.02, vertexColors: true }),
@@ -267,7 +266,6 @@ export function createRoom({ scene }) {
     blue: new THREE.MeshStandardMaterial({ color: 0x2b64c2, roughness: 0.4, metalness: 0.05 }),
     sheet: new THREE.MeshStandardMaterial({ map: tex(sheet.map, { repeat: [4, 6] }), bumpMap: tex(sheet.bump, { repeat: [4, 6], srgb: false }), bumpScale: 0.6, roughness: 1 }),
     plaid: new THREE.MeshStandardMaterial({ map: tex(plaidTexture(), { repeat: [3, 4] }), roughness: 1 }),
-    chair: new THREE.MeshStandardMaterial({ map: tex(chairCloth.map, { repeat: [3, 3] }), bumpMap: tex(chairCloth.bump, { repeat: [3, 3], srgb: false }), bumpScale: 0.5, roughness: 0.95 }),
     curtain: new THREE.MeshStandardMaterial({ map: tex(curtain.map, { repeat: [2, 8] }), bumpMap: tex(curtain.bump, { repeat: [2, 8], srgb: false }), bumpScale: 0.6, roughness: 1, side: THREE.DoubleSide }),
     crate: new THREE.MeshStandardMaterial({ color: 0x24479a, roughness: 0.55 }),
     brass: new THREE.MeshStandardMaterial({ color: 0xc9a25a, roughness: 0.35, metalness: 0.9 }),
@@ -476,10 +474,8 @@ export function createRoom({ scene }) {
   group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(LX, LY + 6, LZ - 70), V(LX + 10, LY - 20, LZ - 130), V(LX + 30, 420, -994), V(LX + 60, 40, -994), V(LX + 320, 22, -994), V(LX + 330, 240, -994)]), 48, 3.2, 6, false), mats.black));
   rbox(70, 110, 8, 2, mats.trim, { x: LX + 330, y: 300, z: -996, cast: false });
   // things on the desk
-  for (let i = 0; i < 5; i++) rbox(142, 10, 125, 2, i % 2 ? mats.black : mats.trim, { x: 420, y: DESK.top + 5 + i * 10, z: DESK.z - 180, ry: (i - 2) * 0.08 });
   cyl(40, 95, mats.trim, { x: 300, y: DESK.top + 47, z: DESK.z + 80 });
   cyl(34, 90, new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.6 }), { x: 300, y: DESK.top + 48, z: DESK.z + 80, rt: 34 });
-  for (let i = 0; i < 4; i++) rbox(220, 14, 290, 2, new THREE.MeshStandardMaterial({ color: [0xd9d2c2, 0x2b3a5a, 0xc8362b, 0xe8e2d6][i], roughness: 0.8 }), { x: -220, y: DESK.top + 7 + i * 14, z: DESK.z - 140, ry: (rnd() - 0.5) * 0.2 });
 
   /* the poster over the desk: a real photograph if assets/poster.jpg exists */
   const frame = rbox(650, 950, 22, 4, mats.black, { x: 0, y: 1720, z: ROOM.back + 11, cast: false });
@@ -693,7 +689,7 @@ export function createRoom({ scene }) {
   cyl(45, 200, mats.trim, { x: -ROOM.halfW + 120, y: 1765, z: djZ + 320 });
   cyl(24, 40, mats.red, { x: -ROOM.halfW + 120, y: 1885, z: djZ + 320 });
 
-  /* buggies: the one on the rug drives, with its transmitter lying beside it */
+  /* buggies: the one on the rug drives */
   const makeBuggy = (bodyMat, { x, y, z, ry, live = false }) => {
     const g = new THREE.Group();
     g.position.set(x, y, z);
@@ -736,8 +732,9 @@ export function createRoom({ scene }) {
   carShadow.position.set(car.x, 1.5, car.z);
   carShadow.rotation.z = car.yaw;
   group.add(carShadow);
-  /* three plywood ramps: the buggy leaves the top edge and flies */
-  const RAMPS = [{ x: 900, z: 700, yaw: Math.PI, len: 520, w: 420, h: 130 }, { x: -600, z: 1500, yaw: 0, len: 520, w: 420, h: 130 }, { x: 200, z: 2150, yaw: Math.PI / 2, len: 440, w: 380, h: 105 }];
+  /* three wide plywood ramps: one straight ahead of where the buggy starts, two
+     across the room; the buggy leaves the top edge and flies */
+  const RAMPS = [{ x: 670, z: 1150, yaw: -0.55, len: 600, w: 640, h: 130 }, { x: -800, z: 1800, yaw: 0.35, len: 600, w: 640, h: 130 }, { x: 1300, z: 2100, yaw: 2.54, len: 600, w: 640, h: 130 }];
   const ply = new THREE.MeshStandardMaterial({ map: tex(wood.map, { repeat: [2, 1] }), color: 0xe8cfa2, roughness: 0.85 });
   for (const r of RAMPS) {
     const shape = new THREE.Shape([new THREE.Vector2(-r.len / 2, 0), new THREE.Vector2(r.len / 2, 0), new THREE.Vector2(r.len / 2, r.h)]);
@@ -763,34 +760,33 @@ export function createRoom({ scene }) {
     return y;
   };
   makeBuggy(mats.blue, { x: -ROOM.halfW + 120, y: 1665, z: djZ - 200, ry: Math.PI / 2 });
-  // the transmitter: two sticks, a few trims, a long antenna
-  const remote = new THREE.Group();
-  remote.position.set(-640, 0, 380);
-  remote.rotation.y = -0.8;
-  group.add(remote);
-  {
-    const parts = [rbox(170, 42, 200, 8, mats.charcoal, { y: 21, parent: remote }), box(150, 2, 60, plate, { y: 42.5, z: -55, parent: remote, cast: false })];
-    for (const sx of [-1, 1]) {
-      parts.push(cyl(9, 3, mats.black, { x: sx * 50, y: 43.5, z: 30, parent: remote, cast: false, seg: 20 }));
-      parts.push(cyl(3, 40, mats.silver, { x: sx * 50, y: 62, z: 30, parent: remote, cast: false, seg: 10 }));
-      parts.push(place(new THREE.Mesh(new THREE.SphereGeometry(7, 14, 10), mats.black), { x: sx * 50, y: 84, z: 30, parent: remote }));
-    }
-    for (let i = 0; i < 3; i++) parts.push(cyl(6, 6, knob, { x: -55 + i * 55, y: 44, z: 75, parent: remote, cast: false, seg: 14 }));
-    parts.push(cyl(3, 420, mats.silver, { y: 40 + 205 * Math.cos(0.5), z: -90 - 205 * Math.sin(0.5), rx: -0.5, parent: remote, seg: 8 }));
-    remote.meshes = bakeInto(remote, parts);
-    shadowBlob(300, 320, -640, 0, 380, -0.8);
-  }
   // where the car cannot go: the walls, and the footprints of the furniture
-  const blocks = [[-700, 700, -1000, -300], [-1990, -1410, -810, 510], [-1330, -970, -160, 560], [1220, 1940, -90, 390], [300, 820, -260, 360]].map(([x0, x1, z0, z1]) => ({ x0, x1, z0, z1 }));
+  const blocks = [[-700, 700, -1000, -300], [-1990, -1410, -810, 510], [-1330, -970, -160, 560], [1220, 1940, -90, 390]].map(([x0, x1, z0, z1]) => ({ x0, x1, z0, z1 }));
   const CAR_R = 170;
+  const TOP = 1250;
+  const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const stepCar = (dt) => {
     const c = car;
-    c.steer += (c.steerIn * 0.5 - c.steer) * Math.min(1, dt * 9);
-    if (c.driving && c.throttle) c.v += c.throttle * 2600 * dt;
+    c.steer += (c.steerIn * 0.55 - c.steer) * Math.min(1, dt * 9);
+    if (c.driving && c.throttle) c.v += c.throttle * 1500 * dt;
     else c.v -= c.v * Math.min(1, dt * 2.2);
-    c.v = Math.max(-900, Math.min(2100, c.v));
+    c.v = Math.max(-600, Math.min(TOP, c.v));
     if (Math.abs(c.v) < 1) c.v = 0;
     c.yaw += (c.v / 228) * Math.tan(c.steer) * dt;
+    // lining up for a ramp: on the run-up, roughly aimed at it, the car is drawn
+    // toward the ramp's centre line and heading, so a near miss becomes a hit
+    if (c.v > 200 && !c.air) {
+      for (const r of RAMPS) {
+        const dx = c.x - r.x, dz = c.z - r.z;
+        const lx = dx * Math.cos(r.yaw) - dz * Math.sin(r.yaw), lz = dx * Math.sin(r.yaw) + dz * Math.cos(r.yaw);
+        const off = wrapAngle(r.yaw - c.yaw);
+        if (lx < -r.len / 2 - 950 || lx > -r.len / 2 + 40 || Math.abs(lz) > r.w / 2 + 260 || Math.abs(off) > 0.7) continue;
+        c.yaw += off * Math.min(1, dt * 3);
+        const pull = lz * Math.min(1, dt * 2.5);
+        c.x -= pull * Math.sin(r.yaw);
+        c.z -= pull * Math.cos(r.yaw);
+      }
+    }
     let x = c.x + Math.cos(c.yaw) * c.v * dt, z = c.z - Math.sin(c.yaw) * c.v * dt;
     let hit = false;
     const x0 = -ROOM.halfW + CAR_R + 30, x1 = ROOM.halfW - CAR_R - 30, z0 = ROOM.back + CAR_R + 30, z1 = ROOM.front - CAR_R - 30;
@@ -808,10 +804,10 @@ export function createRoom({ scene }) {
     const gy = groundAt(x, z);
     if (!c.air && gy - c.y > 60) { x = c.x; z = c.z; hit = true; }
     else if (c.air) {
-      c.vy -= 3500 * dt;
+      c.vy -= 2500 * dt;
       c.y += c.vy * dt;
       if (c.y <= gy) { c.y = gy; c.air = false; c.vy = 0; c.v *= 0.9; }
-    } else if (gy < c.y - 6) { c.air = true; c.vy = c.slopeVy * 1.5; c.y += c.vy * dt; }
+    } else if (gy < c.y - 6) { c.air = true; c.vy = Math.min(950, Math.max(0, c.slopeVy) * 3.4); c.y += c.vy * dt; }
     else { c.slopeVy = (gy - c.y) / Math.max(dt, 1e-3); c.y = gy; }
     if (hit) c.v *= -0.25;
     c.x = x;
@@ -821,7 +817,7 @@ export function createRoom({ scene }) {
     c.group.position.set(x, c.y, z);
     c.group.rotation.y = c.yaw;
     c.group.rotation.z = pitch;
-    c.group.rotation.x = c.steer * (c.v / 2100) * 0.12;
+    c.group.rotation.x = c.steer * (c.v / TOP) * 0.12;
     carShadow.position.set(x, 1.5, z);
     carShadow.rotation.z = c.yaw;
     carShadowMat.opacity = Math.max(0.15, 1 - c.y / 350);
@@ -856,22 +852,6 @@ export function createRoom({ scene }) {
   cyl(8, 10, mats.grey, { y: 48, z: 40, parent: pad, cast: false });
   group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(560, 12, 1300), new THREE.Vector3(760, 6, 1150), new THREE.Vector3(1100, 6, 700), new THREE.Vector3(1450, 8, 330), new THREE.Vector3(tvX - 370, 12, tvZ + 90), new THREE.Vector3(tvX - 356, 470, tvZ + 70), new THREE.Vector3(tvX - 200, 500, tvZ + 60)]), 48, 3, 6, false), mats.charcoal));
 
-  /* a desk chair, pulled out */
-  const chair = new THREE.Group();
-  chair.position.set(560, 0, DESK.z + 700);
-  chair.rotation.y = -0.55;
-  group.add(chair);
-  rbox(480, 80, 460, 34, mats.chair, { y: 470, parent: chair });
-  rbox(440, 440, 70, 34, mats.chair, { y: 740, z: -230, rx: -0.12, parent: chair });
-  cyl(26, 240, mats.silver, { y: 310, parent: chair });
-  cyl(60, 30, mats.black, { y: 190, parent: chair });
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2;
-    const leg = rbox(300, 24, 34, 8, mats.black, { x: Math.cos(a) * 150, y: 40, z: Math.sin(a) * 150, ry: -a, parent: chair });
-    leg.position.y = 40;
-    place(new THREE.Mesh(new THREE.SphereGeometry(26, 16, 12), mats.black), { x: Math.cos(a) * 300, y: 26, z: Math.sin(a) * 300, parent: chair });
-  }
-  shadowBlob(700, 700, 560, 0, DESK.z + 700);
 
   /* the door, front wall */
   const doorX = 900;
@@ -887,7 +867,6 @@ export function createRoom({ scene }) {
   const keep = new Set([poster, gloss, frame, clock, clockRing, sky, bulb, dome, floor, ceiling, rugMesh]);
   for (const d of decks) { d.group.traverse((m) => keep.add(m)); for (const m of d.meshes) keep.add(m); }
   car.group.traverse((m) => keep.add(m));
-  remote.traverse((m) => keep.add(m));
   group.updateWorldMatrix(true, true);
   const buckets = new Map();
   const merged = [];
@@ -921,7 +900,7 @@ export function createRoom({ scene }) {
   let elapsed = 0;
   return {
     group, decks, interactives, lamp, sun, panel,
-    car, remote,
+    car,
     get shadowsDirty() { return shadowsDirty; },
     set shadowsDirty(v) { shadowsDirty = v; },
     phoneSpot: new THREE.Vector3(0, DESK.top, DESK.z + 230),

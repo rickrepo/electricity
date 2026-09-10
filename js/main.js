@@ -3,8 +3,8 @@
 // buggy on the rug with its transmitter. The phone on the desk boots when
 // you walk in. Click anywhere to walk up to the desk, click the phone to
 // pick it up, slide to unlock. Texts arrive while it sits there, and it
-// buzzes. Click a deck to start it; click the buggy or its transmitter to
-// drive it around and off the ramps.
+// buzzes. Safari shows the other site for real, inside the screen. Click a
+// deck to start it; click the buggy to drive it around and off the ramps.
 import * as THREE from '../vendor/three.min.js';
 import { OrbitControls, RoundedBoxGeometry } from '../vendor/three.min.js';
 import { createPhone, SPEC } from './phone.js';
@@ -180,18 +180,17 @@ async function main() {
     setHint('');
     flyTo({ pos: posePosition(pose, THREE.MathUtils.clamp(a.theta, -0.8, 0.8), 1.15), target: pose.target.clone(), up: WORLD_UP.clone() }, 1400, () => settle('room'));
   };
-  /* ---------- the buggy: pick up the transmitter and drive ---------- */
+  /* ---------- the buggy: click it and drive ---------- */
   const keys = new Set();
   let joy = null;
   const chasePose = () => {
     const c = room.car;
-    const pos = c.group.position.clone().add(new THREE.Vector3(-820, 0, 0).applyAxisAngle(WORLD_UP, c.yaw)).add(new THREE.Vector3(0, 430, 0));
+    const pos = c.group.position.clone().add(new THREE.Vector3(-950, 0, 0).applyAxisAngle(WORLD_UP, c.yaw)).add(new THREE.Vector3(0, 520, 0));
     return { pos, target: c.group.position.clone().add(new THREE.Vector3(0, 90, 0)) };
   };
   const drive = () => {
     if (state !== 'room' && state !== 'desk') return;
     state = 'moving';
-    room.remote.visible = false;
     document.body.classList.add('close', 'driving');
     const p = chasePose();
     flyTo({ pos: p.pos, target: p.target, up: WORLD_UP.clone() }, 1400, () => { state = 'drive'; room.car.driving = true; });
@@ -203,7 +202,6 @@ async function main() {
     keys.clear();
     joy = null;
     state = 'moving';
-    room.remote.visible = true;
     document.body.classList.remove('driving');
     flyTo({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP.clone() }, 1400, () => settle('room'));
   };
@@ -264,6 +262,37 @@ async function main() {
     flyTo(back, 850, () => settle(saved.state));
   };
 
+  /* ---------- the other site: a real browser view inside Safari while the phone is in hand ---------- */
+  // Safari's second page is the real web page in a frame. The screen is a flat
+  // rectangle facing the camera when the phone is in hand, so a frame laid
+  // over the page area of the screen lines up with it exactly. The frame is
+  // not sandboxed: the site keeps its cookies and storage and behaves as it
+  // does in any browser, which a sandbox would take away.
+  const site = document.createElement('iframe');
+  site.id = 'site';
+  site.hidden = true;
+  site.title = 'Web page';
+  site.referrerPolicy = 'no-referrer';
+  site.setAttribute('allow', 'fullscreen');
+  document.body.append(site);
+  const siteCorner = new THREE.Vector3();
+  const placeSite = () => {
+    const page = state === 'up' && !move.active ? os.site : null;
+    if (!page) { if (!site.hidden) site.hidden = true; return; }
+    if (site.dataset.url !== page.url) { site.dataset.url = page.url; site.src = page.url; }
+    const toCss = (px, py) => {
+      siteCorner.set((px / os.width - 0.5) * SPEC.screen.width, (0.5 - py / os.height) * SPEC.screen.height, 0);
+      phone.screen.localToWorld(siteCorner).project(camera);
+      return { x: ((siteCorner.x + 1) / 2) * innerWidth, y: ((1 - siteCorner.y) / 2) * innerHeight };
+    };
+    const a = toCss(page.rect.x, page.rect.y), b = toCss(page.rect.x + page.rect.w, page.rect.y + page.rect.h);
+    site.style.left = `${Math.min(a.x, b.x)}px`;
+    site.style.top = `${Math.min(a.y, b.y)}px`;
+    site.style.width = `${Math.abs(b.x - a.x)}px`;
+    site.style.height = `${Math.abs(b.y - a.y)}px`;
+    if (site.hidden) site.hidden = false;
+  };
+
   /* ---------- pointer: walk, pick up, press buttons, use the screen ---------- */
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -278,7 +307,7 @@ async function main() {
   const hitsPhone = (e) => { setRay(e); return raycaster.intersectObject(phone.group, true).length > 0; };
   const deckAt = (e) => { setRay(e); for (const it of room.interactives) if (raycaster.intersectObjects(it.meshes, false).length) return it; return null; };
   const hitOf = (e, meshes) => { setRay(e); return raycaster.intersectObjects(meshes, false)[0] || null; };
-  const carAt = (e) => !!hitOf(e, [...room.car.meshes, ...room.remote.meshes]);
+  const carAt = (e) => !!hitOf(e, room.car.meshes);
   const screenPoint = (e, anywhere = false) => {
     setRay(e);
     if (!anywhere) {
@@ -485,6 +514,7 @@ async function main() {
     if (!lateShadow && now - started > 2500) { lateShadow = true; shadowFrames = 1; }
     if (shadowFrames > 0) { renderer.shadowMap.needsUpdate = true; shadowFrames--; }
     renderer.render(scene, camera);
+    placeSite();
     pace(now, frame);
     if (fpsBox) {
       fpsFrames++;
@@ -493,14 +523,13 @@ async function main() {
     if (first) {
       first = false;
       document.body.classList.add('ready');
-      const bootIn = reduced ? 200 : 1600;
-      setTimeout(() => os.boot(), bootIn);
       // texts from Mom while the phone sits on the desk, to get you to pick it up
-      for (const [at, msg, always] of NUDGES) setTimeout(() => { if (os.mode === 'off' || os.mode === 'boot') return; if (always || os.mode === 'lock') os.receive(0, msg); }, bootIn + at);
+      for (const [at, msg, always] of NUDGES) setTimeout(() => { if (os.mode === 'off' || os.mode === 'boot') return; if (always || os.mode === 'lock') os.receive(0, msg); }, at);
     }
   };
 
   /* ---------- loading: everything the GPU will need, before the room appears ---------- */
+  os.on();
   os.warm();
   progress(0.58);
   await breathe();

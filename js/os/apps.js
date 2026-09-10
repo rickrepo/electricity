@@ -29,22 +29,25 @@ const ABOUT = [
   ['link', 'autismwaitlist.com'],
 ];
 
-// The one other place Safari can go. The link opens the real site in a tab of
-// its own; the address field takes no typing, so nothing else is reachable.
-// window.open comes first (it reports a blocked popup by returning null; a
-// "noopener" feature would make it return null even on success, so the
-// opener is severed afterwards instead). If it is blocked, the top page is
-// asked to go there, then a real anchor is clicked, which some hosts allow
-// where they refuse window.open.
-const SITE = 'https://autismwaitlist.com';
-const openSite = () => {
+// Safari's pages. The first is drawn here. Every other one is a real web
+// page, shown in a frame laid over the screen while the phone is in hand.
+// Only pages listed here can be reached: the address field takes no typing.
+const PAGES = [
+  { title: "I'm Ricky", url: 'ricky.example', live: false },
+  { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true },
+];
+
+// A live page can also go to a tab of its own (the icon in the middle of the
+// toolbar), for browsers or hosts that will not show it in a frame.
+// window.open reports a blocked tab by returning null; if it is blocked, a
+// real anchor is clicked, which some hosts allow where they refuse the call.
+const openTab = (url) => {
   let w = null;
-  try { w = window.open(SITE, '_blank'); if (w) w.opener = null; } catch { w = null; }
+  try { w = window.open(url, '_blank'); if (w) w.opener = null; } catch { w = null; }
   if (w) return true;
-  try { if (window.top !== window) window.top.location.assign(SITE); } catch { /* the frame may not steer its parent */ }
   try {
     const a = document.createElement('a');
-    a.href = SITE;
+    a.href = url;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     document.body.append(a);
@@ -73,20 +76,24 @@ const safari = {
       y = b.y + b.h;
     }
     safariSeen = true;
-    return { blocks, height: y + 8, X, WIDTH, opening: 0, opened: null };
+    return { blocks, height: y + 8, X, WIDTH, page: 0, note: 0, noteText: '' };
   },
   badge() { return safariSeen ? 0 : 1; },
-  animating(s, now) { return s.opening > 0 && now - s.opening < 3200; },
+  animating(s, now) { return s.note > 0 && now - s.note < 3200; },
   bar() { return { title: '' }; },
-  height(s) { return s.height + 40; },
-  draw(ctx, s, os, now) {
-    if (s.opening) {
-      // after the link is tapped: a word on where the page went, for a few seconds
-      const t = now - s.opening;
-      if (t < 3200) {
-        const msg = s.opened ? 'Opening autismwaitlist.com in a new tab' : 'Your browser kept the new tab closed. Type autismwaitlist.com to visit.';
-        text(ctx, msg, s.X, s.height + 12, { font: `13px ${FONT}`, color: s.opened ? '#3a7fdb' : '#c0392b' });
-      } else s.opening = 0;
+  height(s) { return PAGES[s.page].live ? CONTENT_H - 44 : s.height; },
+  site(s) { return PAGES[s.page].live ? { url: PAGES[s.page].url, rect: { x: 0, y: CONTENT_Y, w: W, h: H - CONTENT_Y - 44 } } : null; },
+  draw(ctx, s) {
+    const page = PAGES[s.page];
+    if (page.live) {
+      // what shows until the frame is laid over it: a plain page with the site's name
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, W, CONTENT_H);
+      ctx.fillStyle = '#eef0f3';
+      ctx.fillRect(0, 0, W, 44);
+      text(ctx, page.url.replace(/^https?:\/\//, ''), W / 2, 150, { font: `bold 16px ${FONT}`, color: '#9aa1ab', align: 'center' });
+      text(ctx, 'Pick the phone up to browse', W / 2, 174, { font: `13px ${FONT}`, color: '#b4bac2', align: 'center' });
+      return;
     }
     for (const b of s.blocks) {
       const { type, value, y } = b;
@@ -97,28 +104,24 @@ const safari = {
     }
   },
   overlay(ctx, s, os, now) {
+    const page = PAGES[s.page];
+    const noting = s.note > 0 && now - s.note < 3200;
+    if (!noting) s.note = 0;
     // top: page title and the address field
-    text(ctx, "I'm Ricky", W / 2, 32, { font: `bold 12px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
+    text(ctx, page.title, W / 2, 32, { font: `bold 12px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
     ctx.fillStyle = '#fff';
     roundRect(ctx, 8, 38, W - 16, 22, 5);
     ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.35)';
     ctx.lineWidth = 1;
     ctx.stroke();
-    text(ctx, s.opening && s.opened ? 'autismwaitlist.com' : 'ricky.example', 16, 50, { font: `13px ${FONT}`, color: '#333', baseline: 'middle' });
-    if (s.opening && s.opened) {
-      // the address field fills like a page loading
-      const k = Math.min(1, (now - s.opening) / 1400);
-      ctx.fillStyle = 'rgba(58,127,219,0.28)';
-      roundRect(ctx, 8, 38, (W - 16) * k, 22, 5);
-      ctx.fill();
-    }
+    text(ctx, noting ? s.noteText : page.url.replace(/^https?:\/\//, ''), 16, 50, { font: `13px ${FONT}`, color: noting && !s.noteOk ? '#c0392b' : '#333', baseline: 'middle' });
     ctx.strokeStyle = '#6a7d99';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(W - 20, 49, 5, 0.4, Math.PI * 1.7); ctx.stroke();
     ctx.fillStyle = '#6a7d99';
     ctx.beginPath(); ctx.moveTo(W - 15, 42); ctx.lineTo(W - 13, 48); ctx.lineTo(W - 19, 47); ctx.closePath(); ctx.fill();
-    // bottom toolbar
+    // bottom toolbar: back, forward, open in a tab of its own, pages
     const y = H - 44;
     const g = ctx.createLinearGradient(0, y, 0, H);
     g.addColorStop(0, '#b9c8de'); g.addColorStop(0.5, '#8ea4c2'); g.addColorStop(0.5001, '#7c93b3'); g.addColorStop(1, '#6a83a6');
@@ -129,25 +132,37 @@ const safari = {
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.strokeStyle = s.page > 0 ? '#fff' : 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(44, y + 14); ctx.lineTo(34, y + 22); ctx.lineTo(44, y + 30); ctx.stroke();
+    ctx.strokeStyle = s.page < PAGES.length - 1 ? '#fff' : 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(110, y + 14); ctx.lineTo(120, y + 22); ctx.lineTo(110, y + 30); ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(190, y + 13, 18, 20);
-    ctx.fillStyle = '#6a83a6';
-    ctx.fillRect(193, y + 17, 12, 2); ctx.fillRect(193, y + 21, 12, 2); ctx.fillRect(193, y + 25, 8, 2);
-    ctx.strokeStyle = '#fff';
+    // the box with an arrow out of it: open in a tab of its own
+    ctx.strokeStyle = page.live ? '#fff' : 'rgba(255,255,255,0.4)';
     ctx.lineWidth = 2;
+    ctx.strokeRect(188, y + 16, 16, 16);
+    ctx.beginPath(); ctx.moveTo(197, y + 23); ctx.lineTo(210, y + 10); ctx.moveTo(203, y + 10); ctx.lineTo(210, y + 10); ctx.lineTo(210, y + 17); ctx.stroke();
+    ctx.strokeStyle = '#fff';
     ctx.strokeRect(266, y + 16, 15, 15);
     ctx.strokeRect(271, y + 11, 15, 15);
     ctx.fillStyle = '#fff';
     ctx.font = `bold 8px ${FONT}`;
     ctx.textAlign = 'center';
-    ctx.fillText('1', 278.5, y + 22.5);
+    ctx.fillText(String(PAGES.length), 278.5, y + 22.5);
   },
-  tap(x, y, s, os, now) {
+  tap(x, y, s) {
     const link = s.blocks.find((b) => b.type === 'link');
-    if (link?.hit && inRect(link.hit, x, y)) { s.opened = openSite(); s.opening = now; }
+    if (!PAGES[s.page].live && link?.hit && inRect(link.hit, x, y)) { s.page = 1; s.scroll = 0; }
+  },
+  tabTap(x, y, s, os, now) {
+    if (y < H - 44) return;
+    // back and forward step through the pages; the pages button cycles them
+    if (x < 70 && s.page > 0) { s.page--; s.scroll = 0; }
+    else if (x >= 80 && x < 150 && s.page < PAGES.length - 1) { s.page++; s.scroll = 0; }
+    else if (x >= 170 && x < 230 && PAGES[s.page].live) {
+      s.noteOk = openTab(PAGES[s.page].url);
+      s.noteText = s.noteOk ? 'Opened in a new tab' : 'New tab blocked. Type the address.';
+      s.note = now || performance.now();
+    } else if (x >= 240) { s.page = (s.page + 1) % PAGES.length; s.scroll = 0; }
   },
 };
 
