@@ -408,6 +408,7 @@ async function main() {
 
   /* ---------- loop ---------- */
   const NUDGES = [[9000, 'Hey!', false], [26000, 'Pick up your phone', false], [75000, 'Did you finish the website? Open Safari and show me', true]];
+  const buzz = { seen: 0, start: 0, again: 0 };
   const screenWorld = new THREE.Vector3();
   let first = true;
   let lastFrame = performance.now();
@@ -450,14 +451,20 @@ async function main() {
       look.copy(controls.target);
     }
 
-    // a text arriving: two short bursts of a 25 Hz shiver
-    const sinceBuzz = now - os.buzzAt;
-    if (os.buzzAt && sinceBuzz < 700) {
-      const on = sinceBuzz < 280 || (sinceBuzz > 360 && sinceBuzz < 640);
-      const k = on ? Math.sin(sinceBuzz * 0.16) : 0;
-      phone.group.position.x = k * 0.7;
-      phone.group.rotation.z = k * 0.012;
-    } else if (phone.group.position.x !== 0) { phone.group.position.x = 0; phone.group.rotation.z = 0; }
+    // A text arriving rattles the phone on its stand: three bursts of a 25 Hz
+    // shiver that shift, rock, and lift it. While the alert sits unread and the
+    // phone is still on the desk, it buzzes again every twelve seconds.
+    if (os.buzzAt !== buzz.seen) { buzz.seen = os.buzzAt; buzz.start = now; buzz.again = 0; }
+    if (os.alert && state !== 'up' && buzz.again < 4 && now - buzz.start > 12000) { buzz.start = now; buzz.again++; }
+    const tb = now - buzz.start;
+    if (buzz.start && tb < 1150) {
+      const on = tb < 300 || (tb > 420 && tb < 720) || (tb > 840 && tb < 1140);
+      const k = on ? Math.sin(tb * 0.16) : 0, k2 = on ? Math.sin(tb * 0.13 + 1.2) : 0;
+      phone.group.position.x = k * 1.8;
+      phone.group.position.z = k2 * 1.2;
+      phone.group.rotation.z = k * 0.03;
+      phone.group.rotation.y = k2 * 0.015;
+    } else if (phone.group.position.x !== 0 || phone.group.position.z !== 0) { phone.group.position.set(0, phone.group.position.y, 0); phone.group.rotation.set(0, 0, 0); }
 
     for (const [mesh, a] of pressAnim) {
       const t = (now - a.start) / 160;

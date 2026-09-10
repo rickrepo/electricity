@@ -17,10 +17,12 @@ your viewport), click the bezel or press Esc to put it down, click away to
 step back. Click a turntable to start and stop it. There are no buttons or
 words on the page: the room is the interface.
 
-While the phone sits on the desk, texts arrive: it buzzes, the screen shows
-who and what, and the slider says "slide to view". Slide, and the thread
-opens. Over the home screen or an app the text comes as a blue alert with
-Close and Reply, and Messages wears a red badge until it is read.
+While the phone sits on the desk, texts arrive: the phone rattles on its
+stand (and again every few seconds while the text sits unread), the screen
+shows who and what, and the slider says "slide to view". Slide, and the
+thread opens. Over the home screen or an app the text comes as a blue alert
+with Close and Reply. Red badges sit on Messages and Mail for what is
+unread, and on Safari until it has been opened.
 
 Click the buggy or its transmitter to pick the transmitter up and drive:
 the arrow keys or WASD steer and throttle, or drag anywhere (up for
@@ -68,8 +70,9 @@ The phone runs software drawn in the manner of the first iPhone OS:
   Settings, and Phone, Mail, Safari, iPod;
 - every app does something. Safari shows one page, "I'm Ricky. I designed
   this website", with a link to autismwaitlist.com that opens the real site
-  in a tab of its own (the address field takes no typing, so nothing else is
-  reachable). Messages and Mail have threads and an inbox. Photos has a
+  in a tab of its own and says so in the page (the address field takes no
+  typing, so nothing else is reachable; a host that forbids new tabs gets a
+  line saying to type the address instead). Messages and Mail have threads and an inbox. Photos has a
   camera roll and Camera adds to it (it looks at the room). Maps and Weather
   are Toronto. Stocks charts, iPod plays, Calculator calculates, Phone
   dials, Settings toggles airplane mode, brightness, and the wallpaper.

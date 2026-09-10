@@ -262,10 +262,11 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       roundRect(ctx, r.x, r.y, ICON, ICON, 10);
       ctx.fill();
     }
-    const unread = inbox.unread;
-    if (unread) {
-      // the red badge on Messages
-      const r = iconRect(ALL.findIndex((a) => a.id === 'messages'));
+    // red badges: unread texts and mail, and Safari until it has been opened
+    ALL.forEach((app, i) => {
+      const n = app.badge?.() || 0;
+      if (!n) return;
+      const r = iconRect(i);
       const bx = r.x + ICON - 4, by = r.y + 4;
       ctx.fillStyle = '#e0301e';
       ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill();
@@ -276,9 +277,9 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       ctx.font = `bold 13px ${FONT}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(unread), bx, by + 0.5);
+      ctx.fillText(String(n), bx, by + 0.5);
       ctx.textBaseline = 'alphabetic';
-    }
+    });
     statusBar();
   }
   // An arriving text over the home screen or an app, the way the first iPhone
