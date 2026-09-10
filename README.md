@@ -88,6 +88,16 @@ The physical buttons work: the home button goes home (or wakes the phone),
 the sleep button on the top edge puts it to sleep. Keyboard: **H** and **S**
 press them, **Esc** steps back.
 
+## Deploying
+
+`.github/workflows/deploy.yml` publishes the repository to GitHub Pages on
+every push to `main` or to any `claude/**` branch. Two settings on the
+repository make it work: under Settings > Pages the source must be "GitHub
+Actions", and under Settings > Environments > github-pages the deployment
+branch rules must allow the branch that is pushing (add `claude/**`, or
+make that branch the default branch). A run that fails within a few seconds
+with no log is the environment refusing the branch.
+
 ## Running it locally
 
 ```bash
