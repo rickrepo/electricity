@@ -14,21 +14,20 @@ door, an architect's lamp on the desk. Click anywhere to pick the phone up
 again, and click a turntable to start and stop it. There are no buttons or
 words on the page: the room is the interface.
 
-A text from Ricky arrives ("Welcome to my site."): the phone rattles (and
-again every few seconds while the text sits unread on the desk), a card with
-the Messages icon, the sender and the text sits under the clock, and the
-slider says "slide to view". Slide, and the thread opens. A moment after the
-phone is unlocked a second text says to check out the browser; over the home
-screen or an app a text comes as a banner sliding down from the top, the way
-iOS shows one: tap it and the thread opens, swipe it up or leave it and it
-goes. A call comes in too, the way the first iPhone showed one: the caller's
+A text from Ricky arrives ("Welcome to my site."): a card with the Messages
+icon, the sender and the text sits under the clock, and the slider says
+"slide to view". Slide, and the thread opens. A moment after the phone is
+unlocked a second text says to check out the browser; over the home screen
+or an app a text comes as a banner sliding down from the top, the way iOS
+shows one: tap it and the thread opens, swipe it up or leave it and it goes.
+A call comes in too, the way the first iPhone showed one: the caller's
 picture fills the screen, the name sits in a dark band, the slider turns
-green and says "slide to answer", and the phone rings and rattles. Slide to
-answer and the Phone app takes the call; press the sleep button to decline;
-leave it and it is a missed call on the lock screen. If it rings while the
-phone is on the desk, picking the phone up is a missed call too. Red badges
-sit on Messages and Mail for what is unread, on Phone for the missed call,
-and on Safari until it has been opened.
+green and says "slide to answer", and it rings. Slide to answer and the
+Phone app takes the call; press the sleep button to decline; leave it and it
+is a missed call on the lock screen. If it rings while the phone is on the
+desk, picking the phone up is a missed call too. Red badges sit on Messages
+and Mail for what is unread, on Phone for the missed call, and on Safari
+until it has been opened.
 
 The light is the desk lamp (a spotlight with soft shadows) and the window
 (an area light and a low sun). Corners are darkened in
@@ -77,11 +76,10 @@ The phone runs software drawn in the manner of the first iPhone OS:
   show it in a frame. Two things can keep the frame blank: the site's own
   headers may forbid being shown inside another page, and the claude.ai
   preview of this room forbids frames to other sites entirely, so judge it on
-  your own hosting. Messages holds Ricky's texts and the site's own
-  notifications, and Mail its inbox: letters sent, follow-ups gone out, the
-  domain renewed, a deploy. Weather is Toronto. Stocks charts, Calculator
-  calculates, Phone dials, Settings toggles airplane mode, brightness, and the
-  wallpaper.
+  your own hosting. Messages holds Ricky's texts and Mail the post a site of
+  your own actually gets: a renewal, a deploy, a backup, a note to self.
+  Weather is Toronto. Stocks charts, Calculator calculates, Phone dials,
+  Settings toggles airplane mode, brightness, and the wallpaper.
 
 The personal things live in the room, not on the phone.
 

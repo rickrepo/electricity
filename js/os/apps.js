@@ -228,12 +228,10 @@ const safari = {
 /* ================================================================== */
 /* Messages                                                            */
 /* ================================================================== */
-// Ricky's texts to whoever is holding the phone arrive in the first thread
-// (empty until the first one lands); the second is the site's own
-// notifications, the way it texts its owner.
+// Ricky texts whoever is holding the phone; the thread is empty until the
+// first one lands.
 const THREADS = [
   { who: 'Ricky', initials: 'R', color: '#3a7fdb', time: '', unread: 0, msgs: [] },
-  { who: 'autismwaitlist.com', initials: 'AW', color: '#2f7fd6', time: 'Yesterday', unread: 0, msgs: [[0, 'Follow-up emails sent to provincial leaders.'], [0, 'Domain renewed for another year.']] },
 ];
 // the list shows the threads that have something in them
 const listed = () => THREADS.filter((t) => t.msgs.length);
@@ -315,13 +313,12 @@ const messages = {
 /* ================================================================== */
 /* Mail                                                                */
 /* ================================================================== */
-// mail about the site: what it sent, what keeps it running
+// the mail a site of your own actually gets: renewals, deploys, backups
 const MAILS = [
-  { from: 'autismwaitlist.com', subject: 'Letter sent to an MPP', time: '3:12 PM', unread: true, body: 'A letter was generated and sent to an MPP on behalf of a constituent. The follow-up to provincial leaders is scheduled.' },
-  { from: 'autismwaitlist.com', subject: 'Follow-up emails sent', time: '9:48 AM', unread: true, body: 'The automated follow-up went out to provincial leaders, showing what constituents are asking for.' },
-  { from: 'Domain registrar', subject: 'autismwaitlist.com renewed', time: 'Yesterday', body: 'Your domain has been renewed for another year. Nothing to do.' },
-  { from: 'Hosting', subject: 'Deploy succeeded', time: 'Monday', body: 'autismwaitlist.com was deployed. All checks passed.' },
-  { from: 'Ricky', subject: 'Note to self', time: 'Sunday', body: 'Add the new letter template, then update the follow-up list.' },
+  { from: 'Domain registrar', subject: 'autismwaitlist.com renewed', time: '3:12 PM', unread: true, body: 'Your domain has been renewed for another year. Nothing to do.' },
+  { from: 'Hosting', subject: 'Deploy succeeded', time: '9:48 AM', unread: true, body: 'The latest push is live and all checks passed.' },
+  { from: 'Backups', subject: 'Weekly backup finished', time: 'Yesterday', body: 'Everything was copied off the server without errors. The last four weeks are kept.' },
+  { from: 'Ricky', subject: 'Note to self', time: 'Sunday', body: 'The loading screen can be shorter. Try it before adding anything else.' },
 ];
 
 const mail = {
@@ -373,7 +370,7 @@ const mail = {
 /* ================================================================== */
 /* Calendar                                                            */
 /* ================================================================== */
-const EVENTS = [[0, 'Deploy the site update'], [3, 'Review the letter template'], [6, 'Follow-up emails go out'], [12, 'Domain renewal']];
+const EVENTS = [[0, 'Deploy the site update'], [4, 'Look at the new layout'], [9, 'Back up the server'], [16, 'Domain renewal']];
 
 const calendar = {
   id: 'calendar', name: 'Calendar', top: '#ffffff', bottom: '#e6e6e6',
@@ -588,7 +585,7 @@ const calculator = {
 /* ================================================================== */
 /* Notes                                                               */
 /* ================================================================== */
-const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. new letter template', '4. update the follow-up list', '5. renew the domain  ✓'];
+const NOTE = ['To do', '1. build the room  ✓', '2. write the software  ✓', '3. put it online  ✓', '4. shorter loading screen', '5. try the next idea'];
 
 const notes = {
   id: 'notes', name: 'Notes', top: '#fff0a0', bottom: '#f3c53c',

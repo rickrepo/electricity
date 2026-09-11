@@ -17,7 +17,7 @@ const ROWS = [30, 117, 204, 291];
 const DOCK_Y = 389;
 const DOCK_ICON_Y = 404;
 // the banner a text arrives in over the home screen or an app: slides down from the top, stays a few seconds, slides away
-const BANNER = { x: 8, y: 8, w: W - 16, h: 80, r: 13, in: 320, life: 6000, out: 260 };
+const BANNER = { x: 8, y: STATUS_H + 4, w: W - 16, h: 86, r: 13, in: 320, life: 6000, out: 260 };
 const easeOut = (t) => 1 - (1 - t) ** 3;
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
@@ -38,7 +38,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     mode: 'off', since: 0, last: -1e9, wasHome: false, dirty: true, minute: -1,
     knob: 0, releaseAt: 0, releaseFrom: 0,
     app: null, appRect: null, pressed: null, states: {},
-    alert: null, buzzAt: 0, call: null,
+    alert: null, call: null,
     page: 0, pageX: 0, pageAnim: null, // the home screen's page, its drag offset, and the settle animation
     listeners: new Set(),
   };
@@ -50,7 +50,6 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     if (st.mode !== 'lock') return false;
     st.call = { who, since: now };
     st.alert = null;
-    st.buzzAt = now;
     setMode('ringing', now);
     return true;
   };
@@ -442,11 +441,12 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     const call = a.kind === 'call';
     ctx.font = `14px ${FONT}`;
     const wrapped = wrapLines(ctx, a.text, w - 24);
-    const h = 46 + Math.min(lines, wrapped.length) * 17;
+    const h = 52 + Math.min(lines, wrapped.length) * 17;
     ctx.save();
+    // shadows are in device pixels whatever the transform, so scale them by hand
     ctx.shadowColor = 'rgba(0,0,0,0.3)';
-    ctx.shadowBlur = 14;
-    ctx.shadowOffsetY = 4;
+    ctx.shadowBlur = 14 * S;
+    ctx.shadowOffsetY = 4 * S;
     roundRect(ctx, x, y, w, h, 13);
     ctx.fillStyle = 'rgba(242,242,246,0.95)';
     ctx.fill();
@@ -467,6 +467,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     ctx.font = `14px ${FONT}`;
     ctx.fillStyle = '#1c1c1e';
     wrapped.slice(0, lines).forEach((l, i) => ctx.fillText(i === lines - 1 && wrapped.length > lines ? ellipsize(l + ' ' + wrapped[i + 1], w - 24) : l, x + 12, y + 61 + i * 17));
+    return h;
   }
   // where the banner sits right now: sliding in, resting, being dragged up, or sliding away
   const bannerY = (now) => {
@@ -476,9 +477,14 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     else if (t > BANNER.life) k = 1 - easeOut(Math.min(1, (t - BANNER.life) / BANNER.out));
     return BANNER.y - (1 - k) * (BANNER.h + BANNER.y + 6) + Math.min(0, a.drag || 0);
   };
+  // what the banner actually covers: its drawn height, not the two-line maximum
+  const bannerRect = (now) => ({ x: BANNER.x, y: bannerY(now) - 4, w: BANNER.w, h: (st.alert?.h || BANNER.h) + 8 });
   function drawBanner(now) {
+    // a finger on the banner holds it open; a gesture cut short by a button lets it settle back
+    if (ptr.active && ptr.mode === 'banner') st.alert.at = now - BANNER.in;
+    else if (st.alert.drag) st.alert.drag = 0;
     if (now - st.alert.at > BANNER.life + BANNER.out) { st.alert = null; return; }
-    notificationCard(st.alert, BANNER.x, bannerY(now), BANNER.w, 2);
+    st.alert.h = notificationCard(st.alert, BANNER.x, bannerY(now), BANNER.w, 2);
   }
   const openThread = (i, now) => {
     st.alert = null;
@@ -631,7 +637,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         break;
       }
     }
-    if (st.alert && (st.mode === 'home' || st.mode === 'app')) drawBanner(now);
+    // the banner rides over the app-open and app-close zooms too, rather than blinking out
+    if (st.alert && ['home', 'app', 'opening', 'closing'].includes(st.mode)) drawBanner(now);
     if (st.mode !== 'off' && settings.brightness < 1) {
       ctx.fillStyle = `rgba(0,0,0,${(1 - settings.brightness) * 0.8})`;
       ctx.fillRect(0, 0, W, H);
@@ -658,7 +665,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     st.dirty = true;
     Object.assign(ptr, { active: true, mode: null, x0: x, y0: y, t0: now, moved: false, lastY: y, lastT: now, vel: 0 });
     // the banner takes a tap or an upward swipe; everything around it stays live
-    if (st.alert && (st.mode === 'home' || st.mode === 'app') && inRect({ x: BANNER.x, y: bannerY(now) - 4, w: BANNER.w, h: BANNER.h + 8 }, x, y)) { ptr.mode = 'banner'; return true; }
+    if (st.alert && (st.mode === 'home' || st.mode === 'app') && inRect(bannerRect(now), x, y)) { ptr.mode = 'banner'; return true; }
     if (st.mode === 'ringing' || st.mode === 'lock') {
       const kx = TRACK.x + KNOB.pad + st.knob * TRAVEL, ky = TRACK.y + KNOB.pad;
       if (x < kx - 8 || x > kx + KNOB.w + 8 || y < ky - 10 || y > ky + KNOB.h + 10) { ptr.active = false; return false; }
@@ -732,8 +739,10 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     const tap = !ptr.moved && now - ptr.t0 < 700;
     if (ptr.mode === 'banner') {
       if (!st.alert) return;
-      if (tap && st.alert.kind === 'call') { const a = st.alert; st.alert = null; os.open('phone'); st.since = now; return; }
-      if (tap) openThread(st.alert.thread, now);
+      // a tap counts only if it lands on the banner: a cancelled pointer reports (-1, -1)
+      const on = tap && inRect(bannerRect(now), x, y);
+      if (on && st.alert.kind === 'call') { st.alert = null; os.open('phone'); st.since = now; return; }
+      if (on) openThread(st.alert.thread, now);
       else if ((st.alert.drag || 0) < -20) st.alert = null;
       else st.alert.drag = 0;
       return;
@@ -803,6 +812,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       canvas.height = H * S;
       atlas = null;
       layer = null;
+      home = null;
+      dockCache = null;
       st.dirty = true;
       return true;
     },
@@ -836,18 +847,16 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       else this.sleep(now);
     },
     open: os.open,
-    // a text arrives: it lands in its thread, the phone buzzes, and an alert
-    // shows unless that thread is already open
+    // a text arrives: it lands in its thread, and a notification shows unless
+    // that thread is already open
     receive(i, msg, now = performance.now()) {
       const t = inbox.receive(i, msg, clockText().time + ' ' + clockText().ampm);
       const reading = st.mode === 'app' && st.app?.id === 'messages' && appState(st.app).view === i;
       if (reading) inbox.read(i);
       else st.alert = { who: t.who, text: msg, thread: i, at: now };
-      st.buzzAt = now;
       if (st.mode === 'off') setMode('waking', now);
       st.dirty = true;
     },
-    get buzzAt() { return st.buzzAt; },
     get call() { return st.call; },
     dismiss() { st.alert = null; st.dirty = true; },
     ring(who = 'No Caller ID', now = performance.now()) { return ringCall(who, now); },

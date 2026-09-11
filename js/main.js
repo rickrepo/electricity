@@ -1,7 +1,7 @@
 // Ricky's phone, 2007. You are standing in the den: the desk, two 1200s
 // with crates of records, the N64 on its cabinet. The phone on the desk is
 // on, and after the walk-in it comes straight into your hand; slide to
-// unlock. Texts arrive and a call comes in, and it buzzes. Safari shows the
+// unlock. A text arrives and a call comes in. Safari shows the
 // other site for real, inside the screen. Click a deck to start it; click
 // off the screen to put the phone back and look around, click anywhere to
 // pick it up again.
@@ -427,7 +427,6 @@ async function main() {
   const NUDGES = [[6000, 'Welcome to my site.', true]];
   const SECOND_TEXT = 'Check out the browser to learn more about me.';
   const CALL_AT = 18000; // a call comes in
-  const buzz = { seen: 0, start: 0, again: 0 };
   const screenWorld = new THREE.Vector3();
   let first = true;
   let lastFrame = performance.now();
@@ -462,22 +461,6 @@ async function main() {
       controls.update(dt);
       look.copy(controls.target);
     }
-
-    // A text arriving rattles the phone on its stand: three bursts of a 25 Hz
-    // shiver that shift, rock, and lift it. While the alert sits unread and the
-    // phone is still on the desk, it buzzes again every twelve seconds.
-    if (os.buzzAt !== buzz.seen) { buzz.seen = os.buzzAt; buzz.start = now; buzz.again = 0; }
-    if (os.mode === 'ringing') { if (now - buzz.start > 1700) buzz.start = now; }
-    else if (os.alert && state !== 'up' && buzz.again < 4 && now - buzz.start > 12000) { buzz.start = now; buzz.again++; }
-    const tb = now - buzz.start;
-    if (buzz.start && tb < 1150) {
-      const on = tb < 300 || (tb > 420 && tb < 720) || (tb > 840 && tb < 1140);
-      const k = on ? Math.sin(tb * 0.16) : 0, k2 = on ? Math.sin(tb * 0.13 + 1.2) : 0;
-      phone.group.position.x = k * 1.8;
-      phone.group.position.z = k2 * 1.2;
-      phone.group.rotation.z = k * 0.03;
-      phone.group.rotation.y = k2 * 0.015;
-    } else if (phone.group.position.x !== 0 || phone.group.position.z !== 0) { phone.group.position.set(0, phone.group.position.y, 0); phone.group.rotation.set(0, 0, 0); }
 
     for (const [mesh, a] of pressAnim) {
       const t = (now - a.start) / 160;
