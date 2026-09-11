@@ -1,5 +1,5 @@
 // Ricky's phone, 2007. You are standing in the den: the poster over the
-// desk, two 1200s with crates of records, the N64 on its cabinet, a nitro
+// desk, two 1200s with crates of records, the N64 on its cabinet, a gas
 // buggy on the rug and ramps to jump it. The phone on the desk is on. One
 // click anywhere puts it in your hand; slide to unlock. Texts arrive while
 // it sits there and a call comes in, and it buzzes; pick it up and the call
@@ -262,10 +262,14 @@ async function main() {
       return { x: ((siteCorner.x + 1) / 2) * innerWidth, y: ((1 - siteCorner.y) / 2) * innerHeight };
     };
     const a = toCss(page.rect.x, page.rect.y), b = toCss(page.rect.x + page.rect.w, page.rect.y + page.rect.h);
+    const w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y);
+    // the page is laid out at its own viewport width and shrunk to the screen
+    const k = w / page.viewport;
     site.style.left = `${Math.min(a.x, b.x)}px`;
     site.style.top = `${Math.min(a.y, b.y)}px`;
-    site.style.width = `${Math.abs(b.x - a.x)}px`;
-    site.style.height = `${Math.abs(b.y - a.y)}px`;
+    site.style.width = `${page.viewport}px`;
+    site.style.height = `${h / k}px`;
+    site.style.transform = `scale(${k})`;
     if (site.hidden) site.hidden = false;
   };
 
@@ -412,7 +416,7 @@ async function main() {
 
   /* ---------- loop ---------- */
   const NUDGES = [[6000, 'Hey!', false], [62000, 'Pick up your phone', false], [100000, 'Did you finish the website? Open Safari and show me', true]];
-  const CALL_AT = 18000; // Mom rings while the phone is still on the desk
+  const CALL_AT = 18000; // a call rings in while the phone is still on the desk
   const buzz = { seen: 0, start: 0, again: 0 };
   const screenWorld = new THREE.Vector3();
   let first = true;
@@ -500,9 +504,9 @@ async function main() {
     if (first) {
       first = false;
       document.body.classList.add('ready');
-      // texts from Mom while the phone sits on the desk, to get you to pick it up, and a call
+      // texts while the phone sits on the desk, to get you to pick it up, and a call
       for (const [at, msg, always] of NUDGES) setTimeout(() => { if (os.mode === 'off' || os.mode === 'boot' || os.mode === 'ringing') return; if (always || os.mode === 'lock') os.receive(0, msg); }, at);
-      setTimeout(() => { if (state !== 'up' && !move.active) os.ring(0); }, CALL_AT);
+      setTimeout(() => { if (state !== 'up' && !move.active) os.ring('No Caller ID'); }, CALL_AT);
     }
   };
 

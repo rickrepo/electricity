@@ -44,11 +44,10 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   const ptr = { active: false, mode: null, x0: 0, y0: 0, t0: 0, moved: false, lastY: 0, lastT: 0, vel: 0 };
   const setMode = (mode, now) => { st.mode = mode; st.since = now; st.dirty = true; for (const fn of st.listeners) fn(mode); };
 
-  const THREAD_NAMES = ['Mom', 'Deck crew', 'Race day'];
   // a call comes in on the lock screen and rings until it is answered, missed, or gives up
-  const ringCall = (i, now) => {
+  const ringCall = (who, now) => {
     if (st.mode !== 'lock') return false;
-    st.call = { who: THREAD_NAMES[i] || 'Unknown', thread: i, since: now };
+    st.call = { who, since: now };
     st.alert = null;
     st.buzzAt = now;
     setMode('ringing', now);
@@ -754,7 +753,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     get buzzAt() { return st.buzzAt; },
     get call() { return st.call; },
     dismiss() { st.alert = null; st.dirty = true; },
-    ring(i, now = performance.now()) { return ringCall(i, now); },
+    ring(who = 'No Caller ID', now = performance.now()) { return ringCall(who, now); },
     endCall(missed, now = performance.now()) { endCall(missed, now); },
     get alert() { return st.alert; },
     pointer: { down, move, up },

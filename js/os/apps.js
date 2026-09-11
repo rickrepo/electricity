@@ -32,9 +32,12 @@ const ABOUT = [
 // Safari's pages. The first is drawn here. Every other one is a real web
 // page, shown in a frame laid over the screen while the phone is in hand.
 // Only pages listed here can be reached: the address field takes no typing.
+// `viewport` is the width in CSS pixels the live page is laid out at; the
+// frame is then scaled to fit the screen, the way the first iPhone showed a
+// page at a wider virtual width and shrank it to fit.
 const PAGES = [
   { title: "I'm Ricky", url: 'ricky.example', live: false },
-  { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true },
+  { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true, viewport: 430 },
 ];
 
 // A live page can also go to a tab of its own (the icon in the middle of the
@@ -82,7 +85,7 @@ const safari = {
   animating(s, now) { return s.note > 0 && now - s.note < 3200; },
   bar() { return { title: '' }; },
   height(s) { return PAGES[s.page].live ? CONTENT_H - 44 : s.height; },
-  site(s) { return PAGES[s.page].live ? { url: PAGES[s.page].url, rect: { x: 0, y: CONTENT_Y, w: W, h: H - CONTENT_Y - 44 } } : null; },
+  site(s) { return PAGES[s.page].live ? { url: PAGES[s.page].url, viewport: PAGES[s.page].viewport || 430, rect: { x: 0, y: CONTENT_Y, w: W, h: H - CONTENT_Y - 44 } } : null; },
   draw(ctx, s) {
     const page = PAGES[s.page];
     if (page.live) {
@@ -170,9 +173,9 @@ const safari = {
 /* Messages                                                            */
 /* ================================================================== */
 const THREADS = [
-  { who: 'Mom', initials: 'M', color: '#c2578f', time: '2:41 PM', unread: 0, msgs: [[0, 'Did the phone come out ok?'], [1, 'It boots. It even unlocks.'], [0, 'Proud of you. Eat something.'], [1, 'Eating.'], [0, 'Call me back x4']] },
+  { who: 'Autism Waitlist', initials: 'AW', color: '#2f7fd6', time: '2:41 PM', unread: 0, msgs: [[0, 'The site is up.'], [1, 'On it.'], [0, 'Open Safari on the phone and take a look.']] },
   { who: 'Deck crew', initials: 'DC', color: '#3a7fdb', time: '11:05 AM', msgs: [[0, 'Bringing the 1200s Saturday?'], [1, 'Both. And the crate.'], [0, 'Bring the good needle this time'], [1, 'It was the good needle.']] },
-  { who: 'Race day', initials: 'RD', color: '#e8842e', time: 'Yesterday', msgs: [[0, 'Track opens at 9. Bring fuel.'], [1, 'Already mixed 20%.'], [0, 'Clutch bell?'], [1, 'Ordering one now.']] },
+  { who: 'Race day', initials: 'RD', color: '#e8842e', time: 'Yesterday', msgs: [[0, 'Track opens at 9.'], [1, 'Charging the packs now.'], [0, 'Bring the ramps?'], [1, 'Both of them.']] },
 ];
 
 // Texts that arrive while the phone sits on the desk. The list and the thread
@@ -253,9 +256,9 @@ const messages = {
 /* Mail                                                                */
 /* ================================================================== */
 const MAILS = [
-  { from: 'Nitro Depot', subject: 'Your fuel order shipped', time: '3:12 PM', unread: true, body: 'Two gallons of 20% nitro are on the way. Keep it away from the furnace this time.\n\nTracking: 1989-0623-RCKY' },
+  { from: 'Autism Waitlist', subject: 'Your site is live', time: '3:12 PM', unread: true, body: 'autismwaitlist.com is up and answering. Open Safari on this phone to see it.' },
   { from: 'Record Fair', subject: 'Saturday, Hall B', time: '9:48 AM', unread: true, body: 'Doors at 8. Bring cash and a crate. Someone is selling a box of 12-inch singles from 1989 and we thought of you.' },
-  { from: 'Mom', subject: 'Photos from 1989 (12 attachments)', time: 'Yesterday', body: 'Found the box in the attic. You had the same haircut for four years. Call me.' },
+  { from: 'Toronto Public Library', subject: 'Your hold is ready', time: 'Yesterday', body: 'The item you placed on hold is waiting at the desk. It will be held for seven days.' },
   { from: 'N64 Parts Co.', subject: 'Controller sticks back in stock', time: 'Monday', body: 'The replacement sticks you asked about are in. Limit four per customer, which we assume is exactly your number.' },
   { from: 'Ricky', subject: 'Note to self', time: 'Sunday', body: 'Fix the tonearm on the left deck. Then stop touching it.' },
 ];
@@ -309,7 +312,7 @@ const mail = {
 /* ================================================================== */
 /* Calendar                                                            */
 /* ================================================================== */
-const EVENTS = [[0, 'Phone boots. Finally.'], [3, 'Race day · the track, 9 AM'], [6, 'Record fair · Hall B'], [12, 'Clutch bell arrives (allegedly)']];
+const EVENTS = [[0, 'Site goes live'], [3, 'Race day · the track, 9 AM'], [6, 'Record fair · Hall B'], [12, 'New tires arrive (allegedly)']];
 
 const calendar = {
   id: 'calendar', name: 'Calendar', top: '#ffffff', bottom: '#e6e6e6',
@@ -709,7 +712,7 @@ const calculator = {
 /* ================================================================== */
 /* Notes                                                               */
 /* ================================================================== */
-const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. fix the squeaky desk chair', '4. return the library book (1998)', '5. call Mom back (4 texts)', '', 'Nothing here is real except 1989.'];
+const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. fix the left deck tonearm', '4. return the library book (1998)', '5. charge the buggy packs', '', 'Nothing here is real except 1989.'];
 
 const notes = {
   id: 'notes', name: 'Notes', top: '#fff0a0', bottom: '#f3c53c',
@@ -813,7 +816,7 @@ const phone = {
       const t = (now - s.callStart) / 1000;
       text(ctx, s.callee, W / 2, 120, { font: `bold 30px ${FONT}`, color: '#fff', align: 'center' });
       text(ctx, t < 2.5 ? 'calling…' : `${pad2(Math.floor((t - 2.5) / 60))}:${pad2(Math.floor(t - 2.5) % 60)}`, W / 2, 150, { font: `18px ${FONT}`, color: 'rgba(255,255,255,0.8)', align: 'center' });
-      avatar(ctx, W / 2, 250, 56, s.callee === 'Mom' ? 'M' : '#', s.callee === 'Mom' ? '#c2578f' : '#5b6f8f');
+      avatar(ctx, W / 2, 250, 56, '#', '#5b6f8f');
       const eg = ctx.createLinearGradient(0, 400, 0, 444);
       eg.addColorStop(0, '#f0716a'); eg.addColorStop(1, '#c62c22');
       ctx.fillStyle = eg;
@@ -859,7 +862,7 @@ const phone = {
   tap(x, y, s, os, now) {
     if (!s.hits) return;
     if (s.view === 'calling') { if (inRect(s.hits?.end, x, y)) { s.view = 'keypad'; s.number = ''; } return; }
-    if (inRect(s.hits?.call, x, y)) { s.view = 'calling'; s.callStart = now; s.callee = s.number || 'Mom'; return; }
+    if (inRect(s.hits?.call, x, y)) { s.view = 'calling'; s.callStart = now; s.callee = s.number || 'No number'; return; }
     if (inRect(s.hits?.del, x, y)) { s.number = s.number.slice(0, -1); return; }
     const { y0, cw, ch } = s.hits;
     if (y < y0 || y >= y0 + 4 * ch) return;
