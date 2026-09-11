@@ -14,10 +14,10 @@ door, an architect's lamp on the desk. Click anywhere to pick the phone up
 again, and click a turntable to start and stop it. There are no buttons or
 words on the page: the room is the interface.
 
-A text or two arrive from the site itself, the way it notifies its owner
-(a letter sent to an MPP, follow-ups gone out): the phone rattles (and again
-every few seconds while the text sits unread on the desk), the screen shows
-who and what, and the slider says "slide to view". Slide, and the thread opens. Over the home screen or
+A text from Ricky arrives ("Welcome to my site."): the phone rattles (and
+again every few seconds while the text sits unread on the desk), the screen
+shows who and what, and the slider says "slide to view". A moment after the
+phone is unlocked a second one says to check out the browser. Slide, and the thread opens. Over the home screen or
 an app the text comes as a blue alert with Close and Reply. A call comes in too, the way the first iPhone showed
 one: the caller's picture fills the screen, the name sits in a dark band,
 the slider turns green and says "slide to answer", and the phone rings and
@@ -63,20 +63,22 @@ The phone runs software drawn in the manner of the first iPhone OS:
 - every app does something. Safari is a real browser for the pages listed in
   its code and nothing else (the address field takes no typing): a plain
   portfolio page (a name, twenty years of building websites for fun and now
-  the new era of AI, the work, a footer) whose autismwaitlist.com entry opens
-  the actual site, shown in a frame laid over the screen while the phone is in
-  hand; the page is laid out at a desktop's width and scaled down to fit, so
-  it looks like a small copy of the site, the way the first iPhone shrank
-  pages to the screen, and the magnifier in the toolbar steps it through
-  desktop, tablet and phone widths. The toolbar's middle button opens the
-  current site in a tab of its own, for hosts that will not show it in a
-  frame. Two things can keep the frame blank: the site's own headers may
-  forbid being shown inside another page, and the claude.ai preview of this
-  room forbids frames to other sites entirely, so judge it on your own
-  hosting. Messages holds the site's own notifications and Mail its inbox:
-  letters sent, follow-ups gone out, the domain renewed, a deploy. Weather is
-  Toronto. Stocks charts, Calculator calculates, Phone dials, Settings toggles
-  airplane mode, brightness, and the wallpaper.
+  the new era of AI, the work, a footer) whose entries for autismwaitlist.com
+  and processmaps.ai open the actual sites, shown in a frame laid over the
+  screen while the phone is in hand, with the toolbar's back and forward
+  buttons walking that history; the page is laid out at a desktop's width and
+  scaled down to fit, so it looks like a small copy of the site, the way the
+  first iPhone shrank pages to the screen, and the magnifier in the toolbar
+  steps it through desktop, tablet and phone widths. The toolbar's middle
+  button opens the current site in a tab of its own, for hosts that will not
+  show it in a frame. Two things can keep the frame blank: the site's own
+  headers may forbid being shown inside another page, and the claude.ai
+  preview of this room forbids frames to other sites entirely, so judge it on
+  your own hosting. Messages holds Ricky's texts and the site's own
+  notifications, and Mail its inbox: letters sent, follow-ups gone out, the
+  domain renewed, a deploy. Weather is Toronto. Stocks charts, Calculator
+  calculates, Phone dials, Settings toggles airplane mode, brightness, and the
+  wallpaper.
 
 The personal things live in the room, not on the phone.
 

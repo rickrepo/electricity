@@ -423,8 +423,9 @@ async function main() {
   document.addEventListener('visibilitychange', () => { paceHold = performance.now() + 2000; });
 
   /* ---------- loop ---------- */
-  // a text or two from the site itself; the second only if the phone is still locked
-  const NUDGES = [[6000, 'Letter generated and sent to an MPP.', true], [62000, 'Follow-up emails sent to provincial leaders.', false]];
+  // a welcome from Ricky while the phone is locked; a second text once the visitor is in
+  const NUDGES = [[6000, 'Welcome to my site.', true]];
+  const SECOND_TEXT = 'Check out the browser to learn more about me.';
   const CALL_AT = 18000; // a call comes in
   const buzz = { seen: 0, start: 0, again: 0 };
   const screenWorld = new THREE.Vector3();
@@ -508,6 +509,13 @@ async function main() {
       document.body.classList.add('ready');
       // texts while the phone sits on the desk, to get you to pick it up, and a call
       for (const [at, msg, always] of NUDGES) setTimeout(() => { if (os.mode === 'off' || os.mode === 'boot' || os.mode === 'ringing') return; if (always || os.mode === 'lock') os.receive(0, msg); }, at);
+      // once the phone is unlocked, a moment later, the second text (unless the browser is already open)
+      let second = false;
+      os.onMode((mode) => {
+        if (second || (mode !== 'home' && mode !== 'app')) return;
+        second = true;
+        setTimeout(() => { if (['off', 'boot', 'ringing'].includes(os.mode) || os.app === 'safari') return; os.receive(0, SECOND_TEXT); }, 7000);
+      });
       setTimeout(() => { if (!move.active) os.ring('No Caller ID'); }, CALL_AT);
     }
   };

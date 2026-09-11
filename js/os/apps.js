@@ -29,7 +29,8 @@ const ABOUT = [
   ['header', 'Ricky', 'Work · About'],
   ['intro', "Hi, I'm Ricky.", "I've been building websites for fun for the past twenty years, and now I'm just enjoying this new era of AI."],
   ['label', 'Work'],
-  ['project', 'autismwaitlist.com', 'Advocacy for better care for children with autism in Ontario. The site generates letters and sends them to MPPs, then follows up automatically with provincial leaders, showing what constituents are asking for.', 'Visit the site'],
+  ['project', 'autismwaitlist.com', 'Advocacy for better care for children with autism in Ontario. The site generates letters and sends them to MPPs, then follows up automatically with provincial leaders, showing what constituents are asking for.', 'Visit the site', 1],
+  ['project', 'processmaps.ai', 'A newer site of mine, made in this era of AI.', 'Visit the site', 2],
   ['project', 'This phone', 'A first-generation iPhone in a den, built with AI from three.js primitives and canvas-drawn software. You are holding it.'],
   ['label', 'About'],
   ['p', "Websites have never been my trade, just something I've enjoyed making for twenty years. This one is what that looks like in the age of AI."],
@@ -48,7 +49,10 @@ const LAYOUTS = [[1280, 'desktop'], [820, 'tablet'], [430, 'phone']];
 const PAGES = [
   { title: 'Ricky', url: 'ricky.example', live: false },
   { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true, layout: 0 },
+  { title: 'ProcessMaps', url: 'https://processmaps.ai', live: true, layout: 0 },
 ];
+// moving between pages keeps a history for the toolbar's back and forward buttons
+const go = (s, p) => { if (p === s.page) return; s.back.push(s.page); s.fwd = []; s.page = p; s.scroll = 0; };
 
 // A live page can also go to a tab of its own (the icon in the middle of the
 // toolbar), for browsers or hosts that will not show it in a frame.
@@ -80,8 +84,8 @@ const safari = {
     let y = 14;
     const X = 16, WIDTH = W - 32;
     y = 0;
-    for (const [type, value, sub, link] of ABOUT) {
-      const b = { type, value, sub, link, y };
+    for (const [type, value, sub, link, target] of ABOUT) {
+      const b = { type, value, sub, link, target, y };
       if (type === 'header') b.h = 46;
       else if (type === 'intro') { b.y += 16; m.font = `15px ${FONT}`; b.lines = wrapLines(m, sub, WIDTH); b.h = 32 + b.lines.length * 20 + 10; }
       else if (type === 'label') { b.y += 6; b.h = 28; }
@@ -92,7 +96,7 @@ const safari = {
       y = b.y + b.h + (b.gap || 0);
     }
     safariSeen = true;
-    return { blocks, height: y + 8, X, WIDTH, page: 0, note: 0, noteText: '', layout: -1 };
+    return { blocks, height: y + 8, X, WIDTH, page: 0, back: [], fwd: [], note: 0, noteText: '', layout: -1 };
   },
   badge() { return safariSeen ? 0 : 1; },
   animating(s, now) { return s.note > 0 && now - s.note < 3200; },
@@ -169,9 +173,9 @@ const safari = {
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = s.page > 0 ? '#fff' : 'rgba(255,255,255,0.4)';
+    ctx.strokeStyle = s.back.length ? '#fff' : 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(44, y + 14); ctx.lineTo(34, y + 22); ctx.lineTo(44, y + 30); ctx.stroke();
-    ctx.strokeStyle = s.page < PAGES.length - 1 ? '#fff' : 'rgba(255,255,255,0.4)';
+    ctx.strokeStyle = s.fwd.length ? '#fff' : 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(110, y + 14); ctx.lineTo(120, y + 22); ctx.lineTo(110, y + 30); ctx.stroke();
     // the box with an arrow out of it: open in a tab of its own
     ctx.strokeStyle = page.live ? '#fff' : 'rgba(255,255,255,0.4)';
@@ -199,19 +203,19 @@ const safari = {
   tap(x, y, s) {
     // the whole entry is the link, as on most portfolio pages
     const card = s.blocks.find((b) => b.hit && inRect(b.hit, x, y));
-    if (!PAGES[s.page].live && card) { s.page = 1; s.scroll = 0; }
+    if (!PAGES[s.page].live && card) go(s, card.target);
   },
   tabTap(x, y, s, os, now) {
     if (y < H - 44) return;
-    // back and forward step through the pages; the pages button cycles them
-    if (x < 70 && s.page > 0) { s.page--; s.scroll = 0; }
-    else if (x >= 80 && x < 150 && s.page < PAGES.length - 1) { s.page++; s.scroll = 0; }
+    // back and forward walk the history; the pages button cycles the pages
+    if (x < 70 && s.back.length) { s.fwd.push(s.page); s.page = s.back.pop(); s.scroll = 0; }
+    else if (x >= 80 && x < 150 && s.fwd.length) { s.back.push(s.page); s.page = s.fwd.pop(); s.scroll = 0; }
     else if (x >= 170 && x < 230 && PAGES[s.page].live) {
       s.noteOk = openTab(PAGES[s.page].url);
       s.noteText = s.noteOk ? 'Opened in a new tab' : 'New tab blocked. Type the address.';
       s.note = now || performance.now();
     } else if (x >= 240) {
-      if (!PAGES[s.page].live) { s.page = (s.page + 1) % PAGES.length; s.scroll = 0; return; }
+      if (!PAGES[s.page].live) { go(s, (s.page + 1) % PAGES.length); return; }
       const cur = s.layout < 0 ? PAGES[s.page].layout || 0 : s.layout;
       s.layout = (cur + 1) % LAYOUTS.length;
       s.noteOk = true;
@@ -224,10 +228,15 @@ const safari = {
 /* ================================================================== */
 /* Messages                                                            */
 /* ================================================================== */
-// the site's own notifications, the way it texts its owner
+// Ricky's texts to whoever is holding the phone arrive in the first thread
+// (empty until the first one lands); the second is the site's own
+// notifications, the way it texts its owner.
 const THREADS = [
+  { who: 'Ricky', initials: 'R', color: '#3a7fdb', time: '', unread: 0, msgs: [] },
   { who: 'autismwaitlist.com', initials: 'AW', color: '#2f7fd6', time: 'Yesterday', unread: 0, msgs: [[0, 'Follow-up emails sent to provincial leaders.'], [0, 'Domain renewed for another year.']] },
 ];
+// the list shows the threads that have something in them
+const listed = () => THREADS.filter((t) => t.msgs.length);
 
 // Texts that arrive while the phone sits on the desk. The list and the thread
 // are laid out again the next time they are drawn.
@@ -265,7 +274,7 @@ const messages = {
   bar(s) { return s.view < 0 ? { title: 'Messages' } : { title: THREADS[s.view].who, back: 'Messages' }; },
   back(s) { if (s.view < 0) return false; s.view = -1; s.scroll = 0; return true; },
   height(s, os) {
-    if (s.view < 0) return THREADS.length * 70;
+    if (s.view < 0) return listed().length * 70;
     if (THREADS[s.view].stale) { delete s.layouts[s.view]; THREADS[s.view].stale = false; }
     s.layouts[s.view] ||= layoutThread(os.measure, THREADS[s.view]);
     return s.layouts[s.view].height;
@@ -275,7 +284,7 @@ const messages = {
     if (s.view < 0) {
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, W, CONTENT_H + 400);
-      THREADS.forEach((t, i) => {
+      listed().forEach((t, i) => {
         const y = i * 70;
         avatar(ctx, 34, y + 35, 20, t.initials, t.color);
         text(ctx, t.who, 66, y + 28, { font: `bold 17px ${FONT}` });
@@ -298,8 +307,8 @@ const messages = {
   },
   tap(x, y, s) {
     if (s.view >= 0) return;
-    const i = Math.floor(y / 70);
-    if (i >= 0 && i < THREADS.length) messages.show(s, i);
+    const t = listed()[Math.floor(y / 70)];
+    if (t) messages.show(s, THREADS.indexOf(t));
   },
 };
 
