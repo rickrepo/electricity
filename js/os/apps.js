@@ -22,15 +22,18 @@ const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); retur
 /* ================================================================== */
 /* Safari: the about page                                              */
 /* ================================================================== */
-// The welcome page, drawn like a small website: a blue masthead, a few
-// lines on what the site does, and a button that opens the real thing.
+// Safari's first page: a plain portfolio, the way a personal site usually
+// reads. A name, a line, the work, a footer. The autismwaitlist.com entry
+// opens the real site.
 const ABOUT = [
-  ['hero', 'Welcome', "I'm Ricky, and this is my phone. It opens onto a site I built."],
-  ['h2', 'autismwaitlist.com'],
-  ['p', 'A site that advocates for better care for children with autism in Ontario.'],
-  ['bullet', 'Letters are generated and sent to MPPs.'],
-  ['bullet', 'Automated follow-up emails go to provincial leaders, showing what constituents are asking for.'],
-  ['button', 'Open autismwaitlist.com'],
+  ['header', 'Ricky', 'Work · About'],
+  ['intro', "Hi, I'm Ricky.", 'I make websites. Here is some of my work.'],
+  ['label', 'Work'],
+  ['project', 'autismwaitlist.com', 'Advocacy for better care for children with autism in Ontario. The site generates letters and sends them to MPPs, then follows up automatically with provincial leaders, showing what constituents are asking for.', 'Visit the site'],
+  ['project', 'This phone', 'A first-generation iPhone in a den, drawn with three.js and canvas. You are holding it.'],
+  ['label', 'About'],
+  ['p', 'Everything here was made from scratch: the room, the phone, and the software running on it.'],
+  ['footer', '© Ricky'],
 ];
 
 // Safari's pages. The first is drawn here. Every other one is a real web
@@ -43,7 +46,7 @@ const ABOUT = [
 // through the widths.
 const LAYOUTS = [[1280, 'desktop'], [820, 'tablet'], [430, 'phone']];
 const PAGES = [
-  { title: 'Welcome', url: 'ricky.example', live: false },
+  { title: 'Ricky', url: 'ricky.example', live: false },
   { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true, layout: 0 },
 ];
 
@@ -77,15 +80,16 @@ const safari = {
     let y = 14;
     const X = 16, WIDTH = W - 32;
     y = 0;
-    for (const [type, value, sub] of ABOUT) {
-      const b = { type, value, sub, y };
-      if (type === 'hero') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, sub, WIDTH); b.h = 70 + b.lines.length * 20; }
-      else if (type === 'h2') { b.y += 12; b.h = 32; }
-      else if (type === 'p') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, value, WIDTH); b.h = b.lines.length * 21 + 6; }
-      else if (type === 'bullet') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, value, WIDTH - 26); b.h = b.lines.length * 21 + 6; }
-      else if (type === 'button') { b.y += 10; b.h = 44; }
+    for (const [type, value, sub, link] of ABOUT) {
+      const b = { type, value, sub, link, y };
+      if (type === 'header') b.h = 46;
+      else if (type === 'intro') { b.y += 16; m.font = `15px ${FONT}`; b.lines = wrapLines(m, sub, WIDTH); b.h = 32 + b.lines.length * 20 + 10; }
+      else if (type === 'label') { b.y += 6; b.h = 28; }
+      else if (type === 'project') { m.font = `14px ${FONT}`; b.lines = wrapLines(m, sub, WIDTH - 24); b.h = 34 + b.lines.length * 19 + (link ? 28 : 8); b.gap = 10; }
+      else if (type === 'p') { m.font = `14px ${FONT}`; b.lines = wrapLines(m, value, WIDTH); b.h = b.lines.length * 19 + 8; }
+      else if (type === 'footer') { b.y += 10; b.h = 40; }
       blocks.push(b);
-      y = b.y + b.h;
+      y = b.y + b.h + (b.gap || 0);
     }
     safariSeen = true;
     return { blocks, height: y + 8, X, WIDTH, page: 0, note: 0, noteText: '', layout: -1 };
@@ -107,35 +111,32 @@ const safari = {
       text(ctx, 'Pick the phone up to browse', W / 2, 174, { font: `13px ${FONT}`, color: '#b4bac2', align: 'center' });
       return;
     }
-    ctx.fillStyle = '#f5f7fa';
+    ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, W, s.height + 400);
     for (const b of s.blocks) {
       const { type, value, y } = b;
-      if (type === 'hero') {
-        const g = ctx.createLinearGradient(0, y, 0, y + b.h);
-        g.addColorStop(0, '#3d8ee0'); g.addColorStop(1, '#1f5fb3');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, y, W, b.h);
-        ctx.fillStyle = 'rgba(255,255,255,0.12)';
-        ctx.beginPath(); ctx.arc(W - 30, y + 20, 70, 0, Math.PI * 2); ctx.fill();
-        text(ctx, value, s.X, y + 40, { font: `bold 30px ${FONT}`, color: '#fff' });
-        b.lines.forEach((l, i) => text(ctx, l, s.X, y + 62 + i * 20, { font: `15px ${FONT}`, color: 'rgba(255,255,255,0.92)' }));
-      } else if (type === 'h2') { text(ctx, value, s.X, y + 22, { font: `bold 20px ${FONT}`, color: '#14233a' }); ctx.fillStyle = '#3d8ee0'; ctx.fillRect(s.X, y + 28, 34, 3); }
-      else if (type === 'p') b.lines.forEach((l, i) => text(ctx, l, s.X, y + 15 + i * 21, { font: `15px ${FONT}`, color: '#2a3442' }));
-      else if (type === 'bullet') {
-        ctx.fillStyle = '#3d8ee0';
-        ctx.beginPath(); ctx.arc(s.X + 8, y + 11, 8, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(s.X + 4, y + 11); ctx.lineTo(s.X + 7, y + 14); ctx.lineTo(s.X + 12, y + 8); ctx.stroke();
-        b.lines.forEach((l, i) => text(ctx, l, s.X + 26, y + 16 + i * 21, { font: `15px ${FONT}`, color: '#2a3442' }));
-      } else if (type === 'button') {
-        const g = ctx.createLinearGradient(0, y, 0, y + 44);
-        g.addColorStop(0, '#5fa7ef'); g.addColorStop(1, '#2468c2');
-        roundRect(ctx, s.X, y, s.WIDTH, 44, 10);
-        ctx.fillStyle = g; ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
-        text(ctx, value, W / 2, y + 22, { font: `bold 16px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
-        b.hit = { x: s.X, y, w: s.WIDTH, h: 44 };
+      if (type === 'header') {
+        text(ctx, value, s.X, y + 29, { font: `bold 19px ${FONT}`, color: '#1c1f24' });
+        text(ctx, b.sub, W - s.X, y + 29, { font: `13px ${FONT}`, color: '#6b7280', align: 'right' });
+        ctx.fillStyle = '#e3e6ea'; ctx.fillRect(0, y + b.h - 1, W, 1);
+      } else if (type === 'intro') {
+        text(ctx, value, s.X, y + 24, { font: `bold 24px ${FONT}`, color: '#1c1f24' });
+        b.lines.forEach((l, i) => text(ctx, l, s.X, y + 50 + i * 20, { font: `15px ${FONT}`, color: '#4b5563' }));
+      } else if (type === 'label') text(ctx, value.toUpperCase(), s.X, y + 18, { font: `bold 11px ${FONT}`, color: '#8a919c' });
+      else if (type === 'project') {
+        roundRect(ctx, s.X + 0.5, y + 0.5, s.WIDTH - 1, b.h - 1, 8);
+        ctx.fillStyle = '#fbfbfc'; ctx.fill();
+        ctx.strokeStyle = '#e3e6ea'; ctx.lineWidth = 1; ctx.stroke();
+        text(ctx, value, s.X + 12, y + 24, { font: `bold 16px ${FONT}`, color: '#1c1f24' });
+        b.lines.forEach((l, i) => text(ctx, l, s.X + 12, y + 46 + i * 19, { font: `14px ${FONT}`, color: '#4b5563' }));
+        if (b.link) {
+          text(ctx, `${b.link} →`, s.X + 12, y + 46 + b.lines.length * 19 + 8, { font: `14px ${FONT}`, color: '#2a66c4' });
+          b.hit = { x: s.X, y, w: s.WIDTH, h: b.h };
+        }
+      } else if (type === 'p') b.lines.forEach((l, i) => text(ctx, l, s.X, y + 15 + i * 19, { font: `14px ${FONT}`, color: '#4b5563' }));
+      else if (type === 'footer') {
+        ctx.fillStyle = '#e3e6ea'; ctx.fillRect(s.X, y, s.WIDTH, 1);
+        text(ctx, value, s.X, y + 26, { font: `12px ${FONT}`, color: '#8a919c' });
       }
     }
   },
@@ -196,8 +197,9 @@ const safari = {
     }
   },
   tap(x, y, s) {
-    const button = s.blocks.find((b) => b.type === 'button');
-    if (!PAGES[s.page].live && button?.hit && inRect(button.hit, x, y)) { s.page = 1; s.scroll = 0; }
+    // the whole entry is the link, as on most portfolio pages
+    const card = s.blocks.find((b) => b.hit && inRect(b.hit, x, y));
+    if (!PAGES[s.page].live && card) { s.page = 1; s.scroll = 0; }
   },
   tabTap(x, y, s, os, now) {
     if (y < H - 44) return;
@@ -223,7 +225,7 @@ const safari = {
 /* Messages                                                            */
 /* ================================================================== */
 const THREADS = [
-  { who: 'Autism Waitlist', initials: 'AW', color: '#2f7fd6', time: '2:41 PM', unread: 0, msgs: [[0, 'The site is up.'], [1, 'On it.'], [0, 'Open Safari on the phone and take a look.']] },
+  { who: '555-0134', initials: '#', color: '#8a8f98', time: 'Yesterday', unread: 0, msgs: [[0, "Hey, it's me. New number."], [1, 'Got it.']] },
   { who: 'Deck crew', initials: 'DC', color: '#3a7fdb', time: '11:05 AM', msgs: [[0, 'Bringing the 1200s Saturday?'], [1, 'Both. And the crate.'], [0, 'Bring the good needle this time'], [1, 'It was the good needle.']] },
   { who: 'Record fair', initials: 'RF', color: '#e8842e', time: 'Yesterday', msgs: [[0, 'Doors at 8 on Saturday.'], [1, 'Bringing the crate.'], [0, 'Save you the box of 12-inch singles?'], [1, 'Please.']] },
 ];
@@ -306,7 +308,7 @@ const messages = {
 /* Mail                                                                */
 /* ================================================================== */
 const MAILS = [
-  { from: 'Autism Waitlist', subject: 'Your site is live', time: '3:12 PM', unread: true, body: 'autismwaitlist.com is up and answering. Open Safari on this phone to see it.' },
+  { from: 'Hydro', subject: 'Your bill is ready', time: '3:12 PM', unread: true, body: 'Your statement for August is ready to view. Amount due: $61.40, by September 25.' },
   { from: 'Record Fair', subject: 'Saturday, Hall B', time: '9:48 AM', unread: true, body: 'Doors at 8. Bring cash and a crate. Someone is selling a box of 12-inch singles from the eighties and we thought of you.' },
   { from: 'Toronto Public Library', subject: 'Your hold is ready', time: 'Yesterday', body: 'The item you placed on hold is waiting at the desk. It will be held for seven days.' },
   { from: 'N64 Parts Co.', subject: 'Controller sticks back in stock', time: 'Monday', body: 'The replacement sticks you asked about are in. Limit four per customer, which we assume is exactly your number.' },
@@ -362,7 +364,7 @@ const mail = {
 /* ================================================================== */
 /* Calendar                                                            */
 /* ================================================================== */
-const EVENTS = [[0, 'Site goes live'], [3, 'Deck night · 9 PM'], [6, 'Record fair · Hall B'], [12, 'New needle arrives (allegedly)']];
+const EVENTS = [[0, 'Dentist · 10 AM'], [3, 'Deck night · 9 PM'], [6, 'Record fair · Hall B'], [12, 'New needle arrives (allegedly)']];
 
 const calendar = {
   id: 'calendar', name: 'Calendar', top: '#ffffff', bottom: '#e6e6e6',

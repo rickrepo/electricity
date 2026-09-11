@@ -14,11 +14,11 @@ door, an architect's lamp on the desk. Click anywhere to pick the phone up
 again, and click a turntable to start and stop it. There are no buttons or
 words on the page: the room is the interface.
 
-While the phone sits on the desk, texts arrive: the phone rattles on its
-stand (and again every few seconds while the text sits unread), the screen
-shows who and what, and the slider says "slide to view". Slide, and the
-thread opens. Over the home screen or an app the text comes as a blue alert
-with Close and Reply. A call comes in too, the way the first iPhone showed
+A text or two arrive, the ordinary kind, from a number that is not in the
+contacts: the phone rattles (and again every few seconds while the text
+sits unread on the desk), the screen shows who and what, and the slider
+says "slide to view". Slide, and the thread opens. Over the home screen or
+an app the text comes as a blue alert with Close and Reply. A call comes in too, the way the first iPhone showed
 one: the caller's picture fills the screen, the name sits in a dark band,
 the slider turns green and says "slide to answer", and the phone rings and
 rattles. Slide to answer and the Phone app takes the call; press the sleep
@@ -35,7 +35,7 @@ and varnish, the fabrics have a weave, and the edges are rounded.
 ## Performance
 
 A loading screen, written like an old machine's power-on self test in amber
-on black (memory counting up, the room's parts ticking off, shaders and
+on black (memory counting up, the room and the lamp ticking off, shaders and
 textures counted as they land), covers the first second or two: the room is
 built, every shader is compiled, every texture and every mesh is sent to the
 GPU, and a frame is drawn from each place the camera can go (the room and
@@ -60,11 +60,10 @@ The phone runs software drawn in the manner of the first iPhone OS:
   Calendar, Photos, Camera, Stocks, Maps, Weather, Clock, Calculator, Notes,
   Settings, and Phone, Mail, Safari, iPod;
 - every app does something. Safari is a real browser for the pages listed in
-  its code and nothing else (the address field takes no typing): a welcome
-  page drawn like a small website, saying what autismwaitlist.com is for
-  (letters to MPPs, automated follow-ups to provincial leaders) with a button
-  that opens it, and the actual site, shown in a frame laid over the screen
-  while the phone is in hand; the page is laid out at a desktop's width and
+  its code and nothing else (the address field takes no typing): a plain
+  portfolio page (a name, a line, the work, a footer) whose
+  autismwaitlist.com entry opens the actual site, shown in a frame laid over
+  the screen while the phone is in hand; the page is laid out at a desktop's width and
   scaled down to fit, so it looks like a small copy of the site, the way the
   first iPhone shrank pages to the screen, and the magnifier in the toolbar
   steps it through desktop, tablet and phone widths. The toolbar's middle
@@ -133,7 +132,7 @@ scripts/            npm run vendor rebuilds the bundle
 
 ## Making it yours
 
-The welcome page lives at the top of `js/os/apps.js` (`ABOUT`), the sites
+The portfolio page lives at the top of `js/os/apps.js` (`ABOUT`), the sites
 Safari may open are the `PAGES` list beside it, and the messages, mail,
 calendar events, notes, and specs sit beside their apps in the same file.
 

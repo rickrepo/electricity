@@ -113,9 +113,6 @@ async function main() {
   await breathe();
   const room = createRoom({ scene });
   boot.put('Room', 'built');
-  boot.put('Turntables', `${room.decks.length} found`);
-  boot.put('Records', '12 found');
-  boot.put('Console', 'N64 OK');
   boot.put('Lamp', 'on');
   progress(0.5);
   await breathe();
@@ -426,7 +423,8 @@ async function main() {
   document.addEventListener('visibilitychange', () => { paceHold = performance.now() + 2000; });
 
   /* ---------- loop ---------- */
-  const NUDGES = [[6000, 'Hey!', false], [62000, 'Pick up your phone', false], [100000, 'Did you finish the website? Open Safari and show me', true]];
+  // a text or two, the ordinary kind; the second only if the phone is still locked
+  const NUDGES = [[6000, 'Hey!', true], [62000, 'You around?', false]];
   const CALL_AT = 18000; // a call comes in
   const buzz = { seen: 0, start: 0, again: 0 };
   const screenWorld = new THREE.Vector3();
