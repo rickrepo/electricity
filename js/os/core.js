@@ -16,7 +16,8 @@ const COLS = [16, 93, 170, 247];
 const ROWS = [30, 117, 204, 291];
 const DOCK_Y = 389;
 const DOCK_ICON_Y = 404;
-const ALERT = { x: 30, y: 150, w: 260, h: 132, close: { x: 42, y: 238, w: 114, h: 32 }, reply: { x: 164, y: 238, w: 114, h: 32 } };
+// the banner a text arrives in over the home screen or an app: slides down from the top, stays a few seconds, slides away
+const BANNER = { x: 8, y: 8, w: W - 16, h: 80, r: 13, in: 320, life: 6000, out: 260 };
 const easeOut = (t) => 1 - (1 - t) ** 3;
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
@@ -58,7 +59,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     const who = st.call.who;
     st.call = null;
     st.knob = 0;
-    if (missed) { calls.missed++; st.alert = { who, text: 'Missed Call', kind: 'call', thread: 0 }; }
+    if (missed) { calls.missed++; st.alert = { who, text: 'Missed Call', kind: 'call', thread: 0, at: now }; }
     setMode('lock', now);
   };
   // sliding while it rings answers: the Phone app takes the call, timer running
@@ -158,22 +159,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       st.knob = st.releaseFrom * (1 - easeOut(t));
       if (t >= 1) st.releaseAt = 0;
     }
-    if (st.alert) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      roundRect(ctx, 16, 128, W - 32, 78, 10);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.textAlign = 'left';
-      ctx.shadowColor = 'transparent';
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold 16px ${FONT}`;
-      ctx.fillText(st.alert.who, 30, 152);
-      ctx.font = `15px ${FONT}`;
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      wrapLines(ctx, st.alert.text, W - 60).slice(0, 2).forEach((l, i) => ctx.fillText(l, 30, 174 + i * 19));
-    }
+    // a text or a missed call waits on the lock screen as a card, the way iOS shows one
+    if (st.alert) notificationCard(st.alert, 16, 124, W - 32, 2);
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fillRect(0, 400, W, 80);
     ctx.fillStyle = 'rgba(255,255,255,0.14)';
@@ -393,7 +380,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   }
   function drawHome(now = performance.now()) {
     const minute = Math.floor(Date.now() / 60000);
-    if (!atlas || minute !== atlasMinute) { atlas = renderAtlas(ALL, Date.now(), S); atlasMinute = minute; renderHome(); }
+    if (!atlas || !home || minute !== atlasMinute) { atlas = renderAtlas(ALL, Date.now(), S); atlasMinute = minute; renderHome(); }
     if (st.pageAnim) {
       const t = Math.min(1, (now - st.pageAnim.start) / 280);
       st.pageX = st.pageAnim.from * (1 - easeOut(t));
@@ -436,42 +423,62 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     });
     statusBar();
   }
-  // An arriving text over the home screen or an app, the way the first iPhone
-  // showed one: a blue panel with the sender, the text, Close and Reply.
-  function drawAlert() {
-    const a = ALERT;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(0, 0, W, H);
-    const g = ctx.createLinearGradient(0, a.y, 0, a.y + a.h);
-    g.addColorStop(0, 'rgba(48,72,130,0.96)');
-    g.addColorStop(1, 'rgba(18,34,74,0.96)');
-    roundRect(ctx, a.x, a.y, a.w, a.h, 12);
-    ctx.fillStyle = g;
+  // A notification the way iOS shows one: a frosted card with the app's icon
+  // and name, "now", the sender in bold and the text. The same card waits on
+  // the lock screen (up to `lines` of text) and slides in as a banner over
+  // the home screen or an app.
+  const appIcon = (id, x, y, size) => {
+    if (!atlas) { atlas = renderAtlas(ALL, Date.now(), S); atlasMinute = Math.floor(Date.now() / 60000); }
+    const i = ALL.findIndex((a) => a.id === id);
+    if (i >= 0) ctx.drawImage(atlas.canvas, i * (atlas.cell + atlas.pad), 0, atlas.cell, atlas.cell, x, y, size, size);
+  };
+  const ellipsize = (text, w) => {
+    if (ctx.measureText(text).width <= w) return text;
+    let cut = text;
+    while (cut.length && ctx.measureText(cut + '…').width > w) cut = cut.slice(0, -1);
+    return cut.trimEnd() + '…';
+  };
+  function notificationCard(a, x, y, w, lines) {
+    const call = a.kind === 'call';
+    ctx.font = `14px ${FONT}`;
+    const wrapped = wrapLines(ctx, a.text, w - 24);
+    const h = 46 + Math.min(lines, wrapped.length) * 17;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetY = 4;
+    roundRect(ctx, x, y, w, h, 13);
+    ctx.fillStyle = 'rgba(242,242,246,0.95)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.textAlign = 'center';
+    ctx.restore();
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold 17px ${FONT}`;
-    ctx.fillText(st.alert.who, W / 2, a.y + 30);
-    ctx.font = `15px ${FONT}`;
-    wrapLines(ctx, st.alert.text, a.w - 30).slice(0, 2).forEach((l, i) => ctx.fillText(l, W / 2, a.y + 54 + i * 19));
-    for (const [b, label, strong] of [[a.close, 'Close', false], [a.reply, 'Reply', true]]) {
-      const bg = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
-      bg.addColorStop(0, strong ? '#8fb4e8' : '#6d84ad');
-      bg.addColorStop(1, strong ? '#3a6dc0' : '#3b4f7a');
-      roundRect(ctx, b.x, b.y, b.w, b.h, 8);
-      ctx.fillStyle = bg;
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold 15px ${FONT}`;
-      ctx.fillText(label, b.x + b.w / 2, b.y + 21);
-    }
+    appIcon(call ? 'phone' : 'messages', x + 12, y + 10, 20);
+    ctx.font = `bold 11px ${FONT}`;
+    ctx.fillStyle = '#7d7d82';
+    ctx.fillText(call ? 'PHONE' : 'MESSAGES', x + 38, y + 24);
+    ctx.textAlign = 'right';
+    ctx.font = `11px ${FONT}`;
+    ctx.fillText('now', x + w - 14, y + 24);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#000';
+    ctx.font = `bold 14px ${FONT}`;
+    ctx.fillText(a.who, x + 12, y + 44);
+    ctx.font = `14px ${FONT}`;
+    ctx.fillStyle = '#1c1c1e';
+    wrapped.slice(0, lines).forEach((l, i) => ctx.fillText(i === lines - 1 && wrapped.length > lines ? ellipsize(l + ' ' + wrapped[i + 1], w - 24) : l, x + 12, y + 61 + i * 17));
+  }
+  // where the banner sits right now: sliding in, resting, being dragged up, or sliding away
+  const bannerY = (now) => {
+    const a = st.alert, t = now - a.at;
+    let k = 1;
+    if (t < BANNER.in) k = easeOut(t / BANNER.in);
+    else if (t > BANNER.life) k = 1 - easeOut(Math.min(1, (t - BANNER.life) / BANNER.out));
+    return BANNER.y - (1 - k) * (BANNER.h + BANNER.y + 6) + Math.min(0, a.drag || 0);
+  };
+  function drawBanner(now) {
+    if (now - st.alert.at > BANNER.life + BANNER.out) { st.alert = null; return; }
+    notificationCard(st.alert, BANNER.x, bannerY(now), BANNER.w, 2);
   }
   const openThread = (i, now) => {
     st.alert = null;
@@ -624,7 +631,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         break;
       }
     }
-    if (st.alert && (st.mode === 'home' || st.mode === 'app')) drawAlert();
+    if (st.alert && (st.mode === 'home' || st.mode === 'app')) drawBanner(now);
     if (st.mode !== 'off' && settings.brightness < 1) {
       ctx.fillStyle = `rgba(0,0,0,${(1 - settings.brightness) * 0.8})`;
       ctx.fillRect(0, 0, W, H);
@@ -637,6 +644,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   const animating = (now) => {
     if (!['off', 'home', 'app'].includes(st.mode)) return true; // boot, lock (its shimmer), transitions
     if (ptr.active || st.releaseAt > 0 || st.pageAnim) return true;
+    if (st.alert && (st.mode === 'home' || st.mode === 'app')) return true; // the banner slides and times out
     if (st.mode === 'app' && st.app) {
       const s = appState(st.app);
       if (Math.abs(s.vel) > 0.05) return true;
@@ -649,7 +657,8 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   function down(x, y, now = performance.now()) {
     st.dirty = true;
     Object.assign(ptr, { active: true, mode: null, x0: x, y0: y, t0: now, moved: false, lastY: y, lastT: now, vel: 0 });
-    if (st.alert && (st.mode === 'home' || st.mode === 'app')) { ptr.mode = 'alert'; return true; }
+    // the banner takes a tap or an upward swipe; everything around it stays live
+    if (st.alert && (st.mode === 'home' || st.mode === 'app') && inRect({ x: BANNER.x, y: bannerY(now) - 4, w: BANNER.w, h: BANNER.h + 8 }, x, y)) { ptr.mode = 'banner'; return true; }
     if (st.mode === 'ringing' || st.mode === 'lock') {
       const kx = TRACK.x + KNOB.pad + st.knob * TRAVEL, ky = TRACK.y + KNOB.pad;
       if (x < kx - 8 || x > kx + KNOB.w + 8 || y < ky - 10 || y > ky + KNOB.h + 10) { ptr.active = false; return false; }
@@ -688,6 +697,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     st.dirty = true;
     if (ptr.mode === 'knob' || ptr.mode === 'answer') { st.knob = clamp((x - ptr.grab - TRACK.x - KNOB.pad) / TRAVEL, 0, 1); return; }
     if (!ptr.moved && Math.hypot(x - ptr.x0, y - ptr.y0) > 8) ptr.moved = true;
+    if (ptr.mode === 'banner') { if (st.alert) st.alert.drag = Math.min(0, y - ptr.y0); return; }
     // on the home screen a sideways drag becomes a swipe between pages, with resistance past the ends
     if (st.mode === 'home' && ptr.mode === 'icon' && ptr.moved && Math.abs(x - ptr.x0) > Math.abs(y - ptr.y0)) { ptr.mode = 'swipe'; st.pressed = null; }
     if (ptr.mode === 'swipe') {
@@ -720,9 +730,12 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     ptr.active = false;
     st.dirty = true;
     const tap = !ptr.moved && now - ptr.t0 < 700;
-    if (ptr.mode === 'alert') {
-      if (inRect(ALERT.close, x, y)) st.alert = null;
-      else if (inRect(ALERT.reply, x, y)) openThread(st.alert.thread, now);
+    if (ptr.mode === 'banner') {
+      if (!st.alert) return;
+      if (tap && st.alert.kind === 'call') { const a = st.alert; st.alert = null; os.open('phone'); st.since = now; return; }
+      if (tap) openThread(st.alert.thread, now);
+      else if ((st.alert.drag || 0) < -20) st.alert = null;
+      else st.alert.drag = 0;
       return;
     }
     if (ptr.mode === 'knob') {
@@ -829,7 +842,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       const t = inbox.receive(i, msg, clockText().time + ' ' + clockText().ampm);
       const reading = st.mode === 'app' && st.app?.id === 'messages' && appState(st.app).view === i;
       if (reading) inbox.read(i);
-      else st.alert = { who: t.who, text: msg, thread: i };
+      else st.alert = { who: t.who, text: msg, thread: i, at: now };
       st.buzzAt = now;
       if (st.mode === 'off') setMode('waking', now);
       st.dirty = true;
