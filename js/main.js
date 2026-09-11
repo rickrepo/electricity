@@ -1,10 +1,10 @@
-// Ricky's phone, 2007. You are standing in the den: the poster over the
-// desk, two 1200s with crates of records, the N64 on its cabinet, a gas
-// buggy on the rug and ramps to jump it. The phone on the desk is on. One
-// click anywhere puts it in your hand; slide to unlock. Texts arrive while
-// it sits there and a call comes in, and it buzzes; pick it up and the call
-// is missed. Safari shows the other site for real, inside the screen. Click
-// a deck to start it; click the buggy to drive it around and off the ramps.
+// Ricky's phone, 2007. You are standing in the den: the desk, two 1200s
+// with crates of records, the N64 on its cabinet. The phone on the desk is
+// on, and after the walk-in it comes straight into your hand; slide to
+// unlock. Texts arrive and a call comes in, and it buzzes. Safari shows the
+// other site for real, inside the screen. Click a deck to start it; click
+// off the screen to put the phone back and look around, click anywhere to
+// pick it up again.
 import * as THREE from '../vendor/three.min.js';
 import { OrbitControls, RoundedBoxGeometry } from '../vendor/three.min.js';
 import { createPhone, SPEC } from './phone.js';
@@ -42,15 +42,40 @@ function hasWebGL() {
   try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
 }
 
-// The loading screen shows progress while the room is built and everything
-// the GPU will need is sent ahead: a paint between phases keeps it moving.
-const progress = (p) => { const bar = ui.loading?.querySelector('i'); if (bar) bar.style.transform = `scaleX(${p})`; };
+// The loading screen is a self-test readout, one line per thing the room
+// needs, written while the room is built and everything the GPU will need is
+// sent ahead: a paint between phases keeps it moving.
+const boot = {
+  rows: new Map(),
+  put(label, value) {
+    const rows = ui.loading?.querySelector('.rows');
+    if (!rows) return;
+    let row = this.rows.get(label);
+    if (!row) { row = document.createElement('div'); rows.append(row); this.rows.set(label, row); }
+    row.innerHTML = `${label.padEnd(12, ' ')}${'.'.repeat(8)} <b></b>`;
+    row.querySelector('b').textContent = value;
+    if (label === 'Phone') ui.loading?.querySelector('.mini')?.classList.add('lit');
+  },
+  bar(p) {
+    const bar = ui.loading?.querySelector('.bar');
+    if (!bar) return;
+    const n = Math.round(p * 28);
+    bar.textContent = `[${'#'.repeat(n)}${'.'.repeat(28 - n)}] ${Math.round(p * 100).toString().padStart(3, ' ')}%`;
+  },
+  tail(text) { const t = ui.loading?.querySelector('.tail'); if (t) t.textContent = text; },
+};
+const progress = (p) => boot.bar(p);
 const breathe = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 async function main() {
   if (!hasWebGL()) { ui.fail.hidden = false; ui.loading?.remove(); return; }
+  boot.tail('Self test');
+  boot.put('Memory', '0K');
   progress(0.04);
   await breathe();
+  // a memory count, for the look of it
+  for (let k = 0; k <= 8; k++) { boot.put('Memory', `${k * 80}K`); await breathe(); }
+  boot.put('Memory', '640K OK');
 
   /* ---------- renderer, scene ---------- */
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
@@ -81,10 +106,17 @@ async function main() {
   // near plane at 20 mm: nothing gets closer, and depth precision across the room depends on it
   const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 20, 20000);
 
+  boot.put('Video', `WebGL ${renderer.capabilities.isWebGL2 ? '2' : '1'} OK`);
   /* ---------- the room and the phone on the desk ---------- */
+  boot.put('Room', 'building');
   progress(0.1);
   await breathe();
   const room = createRoom({ scene });
+  boot.put('Room', 'built');
+  boot.put('Turntables', `${room.decks.length} found`);
+  boot.put('Records', '12 found');
+  boot.put('Console', 'N64 OK');
+  boot.put('Lamp', 'on');
   progress(0.5);
   await breathe();
   const rig = new THREE.Group();
@@ -131,7 +163,7 @@ async function main() {
   };
   const posePosition = (pose, azimuth = pose.azimuth, polar = pose.polar) => new THREE.Vector3().setFromSphericalCoords(pose.distance, polar, azimuth).add(pose.target);
 
-  let state = 'moving'; // room | up | drive | moving
+  let state = 'moving'; // room | up | moving
   let idleSince = performance.now();
   const look = new THREE.Vector3();
   const saved = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
@@ -158,31 +190,6 @@ async function main() {
     idleSince = performance.now();
     document.body.classList.toggle('close', poseKey !== 'room');
     setHint();
-  };
-  /* ---------- the buggy: click it and drive ---------- */
-  const keys = new Set();
-  let joy = null;
-  const chasePose = () => {
-    const c = room.car;
-    const pos = c.group.position.clone().add(new THREE.Vector3(-950, 0, 0).applyAxisAngle(WORLD_UP, c.yaw)).add(new THREE.Vector3(0, 520, 0));
-    return { pos, target: c.group.position.clone().add(new THREE.Vector3(0, 90, 0)) };
-  };
-  const drive = () => {
-    if (state !== 'room') return;
-    state = 'moving';
-    document.body.classList.add('close', 'driving');
-    const p = chasePose();
-    flyTo({ pos: p.pos, target: p.target, up: WORLD_UP.clone() }, 1400, () => { state = 'drive'; room.car.driving = true; });
-  };
-  const park = () => {
-    if (state !== 'drive') return;
-    room.car.driving = false;
-    room.car.input(0, 0);
-    keys.clear();
-    joy = null;
-    state = 'moving';
-    document.body.classList.remove('driving');
-    flyTo({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP.clone() }, 1400, () => settle('room'));
   };
   const fitDistance = (w, h, fill) => {
     const fov = THREE.MathUtils.degToRad(camera.fov);
@@ -302,7 +309,6 @@ async function main() {
   const hitsPhone = (e) => { setRay(e); return raycaster.intersectObject(phone.group, true).length > 0; };
   const deckAt = (e) => { setRay(e); for (const it of room.interactives) if (raycaster.intersectObjects(it.meshes, false).length) return it; return null; };
   const hitOf = (e, meshes) => { setRay(e); return raycaster.intersectObjects(meshes, false)[0] || null; };
-  const carAt = (e) => !!hitOf(e, room.car.meshes);
   const screenPoint = (e, anywhere = false) => {
     setRay(e);
     if (!anywhere) {
@@ -335,7 +341,6 @@ async function main() {
   el.addEventListener('pointerdown', (e) => {
     down = { x: e.clientX, y: e.clientY, t: performance.now() };
     if (move.active) return;
-    if (state === 'drive') { joy = { x: e.clientX, y: e.clientY }; el.setPointerCapture(e.pointerId); return; }
     const p = screenPoint(e);
     if (p && os.pointer.down(p.x, p.y, performance.now())) {
       screenGrab = true;
@@ -345,10 +350,7 @@ async function main() {
   });
   el.addEventListener('pointermove', (e) => {
     if (screenGrab) { const p = screenPoint(e, true); if (p) os.pointer.move(p.x, p.y, performance.now()); return; }
-    // dragging steers and drives: up for throttle, sideways to steer
-    if (joy) { room.car.input(THREE.MathUtils.clamp((joy.y - e.clientY) / 110, -1, 1), THREE.MathUtils.clamp((joy.x - e.clientX) / 110, -1, 1)); return; }
-    if (state === 'drive') return;
-    if (!coarse && !down && !move.active) el.style.cursor = buttonAt(e) || hitsPhone(e) || deckAt(e) || carAt(e) ? 'pointer' : '';
+    if (!coarse && !down && !move.active) el.style.cursor = buttonAt(e) || hitsPhone(e) || deckAt(e) ? 'pointer' : '';
   });
   const endPointer = (e) => {
     if (screenGrab) {
@@ -363,35 +365,29 @@ async function main() {
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
     const quick = performance.now() - down.t < 700;
     down = null;
-    if (joy) { joy = null; room.car.input(0, 0); if (moved <= 8 && quick) park(); return; }
     if (moved > 8 || !quick || move.active) return;
     const button = buttonAt(e);
     if (button) return pressButton(button);
     if (state === 'up') { if (!screenPoint(e)) putDown(); return; }
     if (hitsPhone(e) && state === 'room') return pickUp();
-    if (carAt(e)) return drive();
     const deck = deckAt(e);
     if (deck) return deck.action();
     if (state === 'room') pickUp();
   };
   el.addEventListener('pointerup', endPointer);
-  el.addEventListener('pointercancel', () => { if (screenGrab) { screenGrab = false; os.pointer.up(-1, -1); if (state !== 'up') controls.enabled = true; } if (joy) { joy = null; room.car.input(0, 0); } down = null; });
+  el.addEventListener('pointercancel', () => { if (screenGrab) { screenGrab = false; os.pointer.up(-1, -1); if (state !== 'up') controls.enabled = true; } down = null; });
   el.addEventListener('contextmenu', (e) => e.preventDefault());
   controls.addEventListener('start', () => { controls.autoRotate = false; idleSince = performance.now(); });
   controls.addEventListener('end', () => { idleSince = performance.now(); });
 
   // no words over the room: the cursor and the phone itself do the explaining
   const setHint = () => {};
-  const DRIVE_KEYS = { ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right' };
   addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === 'Escape') { if (state === 'up') putDown(); else if (state === 'drive') park(); }
-    if (state === 'drive') { if (DRIVE_KEYS[e.key]) { keys.add(DRIVE_KEYS[e.key]); e.preventDefault(); } return; }
+    if (e.key === 'Escape') { if (state === 'up') putDown(); }
     if (e.key === 'h' || e.key === 'H') pressButton('home');
     if (e.key === 's' || e.key === 'S') pressButton('sleep');
   });
-  addEventListener('keyup', (e) => { if (DRIVE_KEYS[e.key]) keys.delete(DRIVE_KEYS[e.key]); });
-  addEventListener('blur', () => { keys.clear(); if (state === 'drive') room.car.input(0, 0); });
 
   /* ---------- resize ---------- */
   addEventListener('resize', () => {
@@ -431,7 +427,7 @@ async function main() {
 
   /* ---------- loop ---------- */
   const NUDGES = [[6000, 'Hey!', false], [62000, 'Pick up your phone', false], [100000, 'Did you finish the website? Open Safari and show me', true]];
-  const CALL_AT = 18000; // a call rings in while the phone is still on the desk
+  const CALL_AT = 18000; // a call comes in
   const buzz = { seen: 0, start: 0, again: 0 };
   const screenWorld = new THREE.Vector3();
   let first = true;
@@ -461,13 +457,6 @@ async function main() {
       camera.lookAt(look);
       if (t >= 1) { move.active = false; move.onDone?.(); }
     } else if (state === 'up') {
-      camera.lookAt(look);
-    } else if (state === 'drive') {
-      if (!joy) room.car.input((keys.has('up') ? 1 : 0) - (keys.has('down') ? 1 : 0), (keys.has('left') ? 1 : 0) - (keys.has('right') ? 1 : 0));
-      const p = chasePose();
-      const k = 1 - Math.exp(-dt * 6);
-      camera.position.lerp(p.pos, k);
-      look.lerp(p.target, k);
       camera.lookAt(look);
     } else if (state === 'room') {
       if (state === 'room' && !controls.autoRotate && !reduced && !down && now - idleSince > 12000) controls.autoRotate = true;
@@ -505,7 +494,7 @@ async function main() {
     if (os.needsRedraw(now, interval)) { os.draw(now); phone.screenTexture.needsUpdate = true; }
 
     // Nothing that casts a shadow ever moves, so the shadow maps are rendered
-    // at the start, again when the poster's photo lands, and once more for luck.
+    // at the start and once more for luck after everything has settled.
     if (room.shadowsDirty) { room.shadowsDirty = false; shadowFrames = 1; }
     if (!lateShadow && now - started > 2500) { lateShadow = true; shadowFrames = 1; }
     if (shadowFrames > 0) { renderer.shadowMap.needsUpdate = true; shadowFrames--; }
@@ -521,17 +510,21 @@ async function main() {
       document.body.classList.add('ready');
       // texts while the phone sits on the desk, to get you to pick it up, and a call
       for (const [at, msg, always] of NUDGES) setTimeout(() => { if (os.mode === 'off' || os.mode === 'boot' || os.mode === 'ringing') return; if (always || os.mode === 'lock') os.receive(0, msg); }, at);
-      setTimeout(() => { if (state !== 'up' && !move.active) os.ring('No Caller ID'); }, CALL_AT);
+      setTimeout(() => { if (!move.active) os.ring('No Caller ID'); }, CALL_AT);
     }
   };
 
   /* ---------- loading: everything the GPU will need, before the room appears ---------- */
   os.on();
   os.warm();
+  boot.put('Phone', '2007, on');
+  boot.put('Shaders', 'compiling');
   progress(0.58);
   await breathe();
   // every shader in the scene, compiled in parallel where the browser allows
   if (renderer.compileAsync && renderer.extensions.has('KHR_parallel_shader_compile')) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera);
+  boot.put('Shaders', `${renderer.info.programs.length} compiled`);
+  boot.put('Textures', 'uploading');
   progress(0.76);
   await breathe();
   // every texture, uploaded now rather than on first sight
@@ -540,6 +533,8 @@ async function main() {
       for (const key of ['map', 'bumpMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'normalMap', 'alphaMap']) if (m[key]?.isTexture) renderer.initTexture(m[key]);
     }
   });
+  boot.put('Textures', `${renderer.info.memory.textures} uploaded`);
+  boot.put('Shadows', 'drawing');
   progress(0.84);
   await breathe();
   // one frame from each place the camera goes: geometry lands on the GPU and the
@@ -547,7 +542,6 @@ async function main() {
   const views = [
     () => ({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP }),
     () => handPose(),
-    () => ({ ...chasePose(), up: WORLD_UP }),
   ];
   for (let i = 0; i < views.length; i++) {
     const v = views[i]();
@@ -558,22 +552,24 @@ async function main() {
     progress(0.84 + (0.14 * (i + 1)) / views.length);
     await breathe();
   }
-  // the poster's photo gets a moment to land, so its shadow is right from the start
-  for (const t0 = performance.now(); !room.shadowsDirty && performance.now() - t0 < 800;) await breathe();
+  boot.put('Shadows', 'drawn');
   progress(1);
+  boot.tail('Booting the den');
+  await breathe();
+  await new Promise((resolve) => setTimeout(resolve, reduced ? 0 : 450));
   camera.up.copy(WORLD_UP);
 
   /* ---------- walking in ---------- */
   look.copy(POSES.room.target);
   camera.position.copy(posePosition(POSES.room, 0.05, 1.22)).add(new THREE.Vector3(120, 40, 200));
   camera.lookAt(look);
-  flyTo({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP.clone() }, 3200, () => { settle('room'); controls.autoRotate = !reduced; });
+  flyTo({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP.clone() }, 3200, () => { settle('room'); setTimeout(() => { if (state === 'room') pickUp(); }, 900); });
   started = lastFrame = fpsSince = performance.now();
   ui.loading?.classList.add('done');
   setTimeout(() => ui.loading?.remove(), 900);
   tick();
 
-  window.ricky = { scene, camera, controls, renderer, phone, os, room, pickUp, putDown, drive, park, pressButton, get state() { return state; } };
+  window.ricky = { scene, camera, controls, renderer, phone, os, room, pickUp, putDown, pressButton, get state() { return state; } };
 }
 
 main().catch((err) => { console.error(err); ui.loading?.remove(); ui.fail.hidden = false; ui.fail.querySelector('p').textContent = `Something went wrong while drawing the room: ${err.message || err}`; });

@@ -1,14 +1,11 @@
-// The room: a den for someone born in 1989, at dusk, in millimetres.
-// A desk against the back wall with the phone on it and the poster above,
-// two direct-drive turntables and a mixer with two crates of records in
-// front, the N64 on a low cabinet with its controller on the rug, a nitro
-// buggy (click it to drive) and three plywood ramps to jump it off, another
-// buggy on the shelf, curtains, a clock, a door, and an architect's lamp on
-// the desk.
+// The room: a den at dusk, in millimetres.
+// A desk against the back wall with the phone on it, two direct-drive
+// turntables and a mixer with two crates of records in front, the N64 on a
+// low cabinet with its controller on the rug, curtains, a clock, a door, and
+// an architect's lamp on the desk.
 // Boxes, cylinders, and canvas-drawn textures; the light does the rest.
 import * as THREE from '../vendor/three.min.js';
 import { RoundedBoxGeometry, RectAreaLightUniformsLib, mergeGeometries } from '../vendor/three.min.js';
-import { dunkWallpaper } from './os/art.js';
 
 export const DESK = { top: 760, x: 0, z: -650, width: 1400, depth: 700 };
 export const ROOM = { halfW: 2000, back: -1000, front: 2600, height: 2600 };
@@ -477,31 +474,6 @@ export function createRoom({ scene }) {
   cyl(40, 95, mats.trim, { x: 300, y: DESK.top + 47, z: DESK.z + 80 });
   cyl(34, 90, new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.6 }), { x: 300, y: DESK.top + 48, z: DESK.z + 80, rt: 34 });
 
-  /* the poster over the desk: a real photograph if assets/poster.jpg exists */
-  const frame = rbox(650, 950, 22, 4, mats.black, { x: 0, y: 1720, z: ROOM.back + 11, cast: false });
-  const posterTex = tex(dunkWallpaper());
-  posterTex.wrapS = posterTex.wrapT = THREE.ClampToEdgeWrapping;
-  const posterMat = new THREE.MeshStandardMaterial({ map: posterTex, roughness: 0.55 });
-  const poster = new THREE.Mesh(new THREE.PlaneGeometry(600, 900), posterMat);
-  poster.position.set(0, 1720, ROOM.back + 23);
-  group.add(poster);
-  const gloss = new THREE.Mesh(new THREE.PlaneGeometry(600, 900), mats.glass);
-  gloss.position.set(0, 1720, ROOM.back + 24);
-  gloss.material = new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 0.15, transparent: true, opacity: 0.12, clearcoat: 1 });
-  group.add(gloss);
-  const photoSrc = (typeof window !== 'undefined' && window.POSTER_PHOTO) || 'assets/poster.jpg';
-  new THREE.TextureLoader().load(photoSrc, (t) => {
-    shadowsDirty = true;
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 8;
-    const w = 600, h = Math.min(1100, Math.max(500, w * (t.image.height / t.image.width)));
-    poster.geometry.dispose(); poster.geometry = new THREE.PlaneGeometry(w, h);
-    gloss.geometry.dispose(); gloss.geometry = new THREE.PlaneGeometry(w, h);
-    frame.geometry.dispose(); frame.geometry = new THREE.RoundedBoxGeometry(w + 50, h + 50, 22, 3, 4);
-    posterMat.map = t;
-    posterMat.needsUpdate = true;
-  }, undefined, () => {});
-
   /* a wall clock, keeping real time */
   const face = clockFace();
   const clockTex = tex(face.canvas);
@@ -684,145 +656,6 @@ export function createRoom({ scene }) {
   deckA.label.color.set(covers.labels[5]);
   deckB.label.color.set(covers.labels[11]);
   const setPlaying = (deck, on) => { deck.playing = on; deck.lamp.material.emissiveIntensity = on ? 1.4 : 0; };
-  rbox(240, 30, 900, 4, mats.desk, { x: -ROOM.halfW + 120, y: 1650, z: djZ });
-  for (const dz of [-380, 380]) box(20, 200, 20, mats.black, { x: -ROOM.halfW + 40, y: 1540, z: djZ + dz, cast: false });
-  cyl(45, 200, mats.trim, { x: -ROOM.halfW + 120, y: 1765, z: djZ + 320 });
-  cyl(24, 40, mats.red, { x: -ROOM.halfW + 120, y: 1885, z: djZ + 320 });
-
-  /* buggies: the one on the rug drives */
-  const makeBuggy = (bodyMat, { x, y, z, ry, live = false }) => {
-    const g = new THREE.Group();
-    g.position.set(x, y, z);
-    g.rotation.y = ry;
-    group.add(g);
-    const wheels = [];
-    rbox(300, 12, 130, 4, mats.charcoal, { y: 45, parent: g });
-    for (const [wx, wz] of [[-110, 85], [-110, -85], [118, 85], [118, -85]]) {
-      const pivot = new THREE.Group();
-      pivot.position.set(wx, 42, wz);
-      g.add(pivot);
-      const wheel = new THREE.Group();
-      pivot.add(wheel);
-      cyl(42, 40, mats.black, { rx: Math.PI / 2, parent: wheel, seg: 24 });
-      cyl(20, 42, mats.silver, { rx: Math.PI / 2, parent: wheel, cast: false, seg: 16 });
-      wheels.push({ pivot, wheel, front: wx > 0 });
-    }
-    rbox(150, 52, 132, 16, bodyMat, { x: -30, y: 84, parent: g });
-    rbox(130, 30, 122, 12, bodyMat, { x: 105, y: 72, parent: g });
-    rbox(150, 30, 120, 10, new THREE.MeshStandardMaterial({ color: 0x1b2733, roughness: 0.15, metalness: 0.2 }), { x: 10, y: 118, parent: g });
-    rbox(150, 6, 70, 2, mats.black, { x: -150, y: 150, parent: g });
-    for (const wz of [-28, 28]) box(6, 50, 6, mats.black, { x: -140, y: 122, z: wz, parent: g, cast: false });
-    cyl(14, 120, mats.silver, { x: -70, y: 62, z: 82, rz: Math.PI / 2, parent: g });
-    cyl(1.5, 220, mats.black, { x: 40, y: 220, z: -40, parent: g, cast: false });
-    rbox(40, 44, 40, 4, mats.grey, { x: 20, y: 130, z: 30, parent: g });
-    if (!live) return { group: g };
-    // the body bakes into a few meshes in the car's own frame; the wheels stay free to spin and steer
-    const parts = [];
-    g.traverse((m) => { if (m.isMesh && !wheels.some((w) => w.pivot.getObjectById(m.id))) parts.push(m); });
-    const meshes = bakeInto(g, parts, { cast: false });
-    for (const w of wheels) w.wheel.traverse((m) => { if (m.isMesh) { m.castShadow = false; meshes.push(m); } });
-      g.rotation.order = 'YZX'; // yaw, then pitch about the car's own axle line, then roll along its length
-    return { group: g, meshes, wheels, yaw: ry, v: 0, vy: 0, y: 0, air: false, slopeVy: 0, steer: 0, throttle: 0, steerIn: 0, driving: false, x, z, input(t, st) { this.throttle = t; this.steerIn = st; } };
-  };
-  const car = makeBuggy(mats.red, { x: -350, y: 0, z: 520, ry: -0.55, live: true });
-  // its contact shadow stays on the floor and fades as the car leaves it
-  const carShadowMat = blob.clone();
-  const carShadow = new THREE.Mesh(new THREE.PlaneGeometry(460, 300), carShadowMat);
-  carShadow.rotation.set(-Math.PI / 2, 0, 0);
-  carShadow.position.set(car.x, 1.5, car.z);
-  carShadow.rotation.z = car.yaw;
-  group.add(carShadow);
-  /* three wide plywood ramps: one straight ahead of where the buggy starts, two
-     across the room; the buggy leaves the top edge and flies */
-  const RAMPS = [{ x: 670, z: 1150, yaw: -0.55, len: 600, w: 640, h: 130 }, { x: -800, z: 1800, yaw: 0.35, len: 600, w: 640, h: 130 }, { x: 1300, z: 2100, yaw: 2.54, len: 600, w: 640, h: 130 }];
-  const ply = new THREE.MeshStandardMaterial({ map: tex(wood.map, { repeat: [2, 1] }), color: 0xe8cfa2, roughness: 0.85 });
-  for (const r of RAMPS) {
-    const shape = new THREE.Shape([new THREE.Vector2(-r.len / 2, 0), new THREE.Vector2(r.len / 2, 0), new THREE.Vector2(r.len / 2, r.h)]);
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: r.w, bevelEnabled: false });
-    geo.translate(0, 0, -r.w / 2);
-    const m = new THREE.Mesh(geo, ply);
-    m.position.set(r.x, 0.5, r.z);
-    m.rotation.y = r.yaw;
-    m.castShadow = m.receiveShadow = true;
-    group.add(m);
-    // two battens under the lip
-    for (const dz of [-r.w / 2 + 30, r.w / 2 - 30]) { const b = box(r.len - 40, 18, 24, mats.charcoal, { cast: false }); b.position.set(r.x, 9, r.z); b.rotation.y = r.yaw; b.translateZ(dz); }
-    shadowBlob(r.len + 200, r.w + 200, r.x, 0, r.z, r.yaw);
-  }
-  // the floor's height at a point: the top of whichever ramp is there, else 0
-  const groundAt = (px, pz) => {
-    let y = 0;
-    for (const r of RAMPS) {
-      const dx = px - r.x, dz = pz - r.z;
-      const lx = dx * Math.cos(r.yaw) - dz * Math.sin(r.yaw), lz = dx * Math.sin(r.yaw) + dz * Math.cos(r.yaw);
-      if (Math.abs(lz) <= r.w / 2 && lx >= -r.len / 2 && lx <= r.len / 2) y = Math.max(y, (r.h * (lx + r.len / 2)) / r.len);
-    }
-    return y;
-  };
-  makeBuggy(mats.blue, { x: -ROOM.halfW + 120, y: 1665, z: djZ - 200, ry: Math.PI / 2 });
-  // where the car cannot go: the walls, and the footprints of the furniture
-  const blocks = [[-700, 700, -1000, -300], [-1990, -1410, -810, 510], [-1330, -970, -160, 560], [1220, 1940, -90, 390]].map(([x0, x1, z0, z1]) => ({ x0, x1, z0, z1 }));
-  const CAR_R = 170;
-  const TOP = 1250;
-  const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-  const stepCar = (dt) => {
-    const c = car;
-    c.steer += (c.steerIn * 0.55 - c.steer) * Math.min(1, dt * 9);
-    if (c.driving && c.throttle) c.v += c.throttle * 1500 * dt;
-    else c.v -= c.v * Math.min(1, dt * 2.2);
-    c.v = Math.max(-600, Math.min(TOP, c.v));
-    if (Math.abs(c.v) < 1) c.v = 0;
-    c.yaw += (c.v / 228) * Math.tan(c.steer) * dt;
-    // lining up for a ramp: on the run-up, roughly aimed at it, the car is drawn
-    // toward the ramp's centre line and heading, so a near miss becomes a hit
-    if (c.v > 200 && !c.air) {
-      for (const r of RAMPS) {
-        const dx = c.x - r.x, dz = c.z - r.z;
-        const lx = dx * Math.cos(r.yaw) - dz * Math.sin(r.yaw), lz = dx * Math.sin(r.yaw) + dz * Math.cos(r.yaw);
-        const off = wrapAngle(r.yaw - c.yaw);
-        if (lx < -r.len / 2 - 950 || lx > -r.len / 2 + 40 || Math.abs(lz) > r.w / 2 + 260 || Math.abs(off) > 0.7) continue;
-        c.yaw += off * Math.min(1, dt * 3);
-        const pull = lz * Math.min(1, dt * 2.5);
-        c.x -= pull * Math.sin(r.yaw);
-        c.z -= pull * Math.cos(r.yaw);
-      }
-    }
-    let x = c.x + Math.cos(c.yaw) * c.v * dt, z = c.z - Math.sin(c.yaw) * c.v * dt;
-    let hit = false;
-    const x0 = -ROOM.halfW + CAR_R + 30, x1 = ROOM.halfW - CAR_R - 30, z0 = ROOM.back + CAR_R + 30, z1 = ROOM.front - CAR_R - 30;
-    if (x < x0) { x = x0; hit = true; } else if (x > x1) { x = x1; hit = true; }
-    if (z < z0) { z = z0; hit = true; } else if (z > z1) { z = z1; hit = true; }
-    for (const b of blocks) {
-      if (x <= b.x0 - CAR_R || x >= b.x1 + CAR_R || z <= b.z0 - CAR_R || z >= b.z1 + CAR_R) continue;
-      const dx0 = x - (b.x0 - CAR_R), dx1 = b.x1 + CAR_R - x, dz0 = z - (b.z0 - CAR_R), dz1 = b.z1 + CAR_R - z;
-      const m = Math.min(dx0, dx1, dz0, dz1);
-      if (m === dx0) x = b.x0 - CAR_R; else if (m === dx1) x = b.x1 + CAR_R; else if (m === dz0) z = b.z0 - CAR_R; else z = b.z1 + CAR_R;
-      hit = true;
-    }
-    // up the ramps and off their lips: on the ground the car follows the surface
-    // and remembers how fast it was rising; when the ground drops away it flies
-    const gy = groundAt(x, z);
-    if (!c.air && gy - c.y > 60) { x = c.x; z = c.z; hit = true; }
-    else if (c.air) {
-      c.vy -= 2500 * dt;
-      c.y += c.vy * dt;
-      if (c.y <= gy) { c.y = gy; c.air = false; c.vy = 0; c.v *= 0.9; }
-    } else if (gy < c.y - 6) { c.air = true; c.vy = Math.min(950, Math.max(0, c.slopeVy) * 3.4); c.y += c.vy * dt; }
-    else { c.slopeVy = (gy - c.y) / Math.max(dt, 1e-3); c.y = gy; }
-    if (hit) c.v *= -0.25;
-    c.x = x;
-    c.z = z;
-    const fx = Math.cos(c.yaw), fz = -Math.sin(c.yaw);
-    const pitch = c.air ? c.group.rotation.z + (-0.18 - c.group.rotation.z) * Math.min(1, dt * 2.5) : Math.atan2(groundAt(x + fx * 110, z + fz * 110) - groundAt(x - fx * 110, z - fz * 110), 220);
-    c.group.position.set(x, c.y, z);
-    c.group.rotation.y = c.yaw;
-    c.group.rotation.z = pitch;
-    c.group.rotation.x = c.steer * (c.v / TOP) * 0.12;
-    carShadow.position.set(x, 1.5, z);
-    carShadow.rotation.z = c.yaw;
-    carShadowMat.opacity = Math.max(0.15, 1 - c.y / 350);
-    for (const w of c.wheels) { w.wheel.rotation.z -= (c.v / 42) * dt; if (w.front) w.pivot.rotation.y = c.steer; }
-  };
 
   /* a low cabinet on the right wall, the N64 on top */
   const tvX = ROOM.halfW - 420, tvZ = 150;
@@ -862,11 +695,9 @@ export function createRoom({ scene }) {
 
   /* Everything that never moves becomes one mesh per material: a few dozen
      draw calls instead of a few hundred. The decks stay separate (they spin
-     and answer clicks), as do the shaded room planes, the poster (its
-     geometry changes when the photo arrives), and the screens. */
-  const keep = new Set([poster, gloss, frame, clock, clockRing, sky, bulb, dome, floor, ceiling, rugMesh]);
+     and answer clicks), as do the shaded room planes and the screens. */
+  const keep = new Set([clock, clockRing, sky, bulb, dome, floor, ceiling, rugMesh]);
   for (const d of decks) { d.group.traverse((m) => keep.add(m)); for (const m of d.meshes) keep.add(m); }
-  car.group.traverse((m) => keep.add(m));
   group.updateWorldMatrix(true, true);
   const buckets = new Map();
   const merged = [];
@@ -900,14 +731,12 @@ export function createRoom({ scene }) {
   let elapsed = 0;
   return {
     group, decks, interactives, lamp, sun, panel,
-    car,
     get shadowsDirty() { return shadowsDirty; },
     set shadowsDirty(v) { shadowsDirty = v; },
     phoneSpot: new THREE.Vector3(0, DESK.top, DESK.z + 230),
     update(dt) {
       elapsed += dt;
       for (const d of decks) if (d.playing) d.platter.rotation.y += dt * Math.PI * 2 * (33.33 / 60);
-      if (car.driving || car.v !== 0 || car.air) stepCar(dt);
       const minute = Math.floor(Date.now() / 60000);
       if (minute !== clockMinute) { clockMinute = minute; face.draw(); clockTex.needsUpdate = true; }
     },

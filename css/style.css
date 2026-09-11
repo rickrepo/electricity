@@ -35,12 +35,28 @@ body.ready #stage canvas { opacity: 1; }
 body.in-hand #stage::before { opacity: 0; }
 body.in-hand #stage::after { opacity: 0.35; }
 
-/* the loading screen: the room, its shaders, and its textures are all built
-   and sent to the GPU behind it, so nothing stutters once it lifts */
-#loading { position: fixed; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 22px; background: var(--bg-edge); transition: opacity 0.7s ease; }
-#loading .mark { font: 300 46px/1 var(--font); color: var(--ink); opacity: 0.92; }
-#loading .bar { width: 140px; height: 2px; border-radius: 1px; overflow: hidden; background: rgba(237, 231, 222, 0.14); }
-#loading .bar i { display: block; height: 100%; width: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease; }
+/* the loading screen: a small self-test readout in the manner of an old
+   machine's power-on screen, amber on black, while the room, its shaders and
+   its textures are built and sent to the GPU behind it */
+/* the loading screen: a power-on self test in amber, in a small panel */
+#loading { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: #0a0807; color: #f0b25a; font: 13px/1.7 ui-monospace, Menlo, Consolas, "Liberation Mono", monospace; transition: opacity 0.7s ease; white-space: pre; }
+#loading::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.6) 100%); }
+#loading .panel { width: min(440px, 100%); padding: 18px 24px 20px; border: 1px solid rgba(240, 178, 90, 0.35); border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 40px rgba(240, 178, 90, 0.08), inset 0 0 60px rgba(240, 178, 90, 0.04); }
+#loading .head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid rgba(240, 178, 90, 0.35); letter-spacing: 0.08em; }
+#loading .mark { font: 700 15px/1 var(--font); color: #0a0807; background: #f0b25a; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 3px; }
+#loading .body { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; min-height: 190px; }
+#loading .rows div { color: rgba(240, 178, 90, 0.85); }
+#loading .rows div b { color: #ffd79a; font-weight: 400; }
+#loading .mini { position: relative; flex: none; width: 56px; height: 112px; margin-top: 4px; border: 1px solid rgba(240, 178, 90, 0.7); border-radius: 9px; }
+#loading .mini::before { content: ''; position: absolute; left: 50%; top: 7px; width: 14px; height: 2px; margin-left: -7px; background: rgba(240, 178, 90, 0.5); border-radius: 1px; }
+#loading .mini .screen { position: absolute; left: 6px; right: 6px; top: 16px; height: 66px; display: grid; place-items: center; border: 1px solid rgba(240, 178, 90, 0.45); font: 700 22px/1 var(--font); font-style: normal; color: rgba(240, 178, 90, 0.3); transition: background 0.4s, color 0.4s, box-shadow 0.4s; }
+#loading .mini.lit .screen { background: rgba(240, 178, 90, 0.16); color: #ffd79a; box-shadow: 0 0 16px rgba(240, 178, 90, 0.35); }
+#loading .mini .home { position: absolute; left: 50%; bottom: 6px; width: 13px; height: 13px; margin-left: -7px; border: 1px solid rgba(240, 178, 90, 0.6); border-radius: 50%; }
+#loading .bar { margin-top: 10px; color: rgba(240, 178, 90, 0.7); }
+#loading .tail { margin-top: 12px; color: #ffd79a; }
+#loading .tail::after { content: '_'; animation: blink 1s steps(1) infinite; }
+@media (max-width: 420px) { #loading { font-size: 12px; } #loading .panel { padding: 14px 16px 16px; } }
+@keyframes blink { 50% { opacity: 0; } }
 #loading.done { opacity: 0; pointer-events: none; }
 
 /* the other site, laid over Safari's page area while the phone is in hand */
@@ -54,4 +70,5 @@ body.in-hand #stage::after { opacity: 0.35; }
 
 @media (prefers-reduced-motion: reduce) {
   #stage canvas { transition: none; }
+  #loading .tail::after { animation: none; }
 }

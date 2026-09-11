@@ -1,5 +1,5 @@
-// Illustrations for the phone: the dunk poster, the planet, two 1200s, an
-// N64 controller, a nitro buggy, and a few "photos". All drawn from shapes.
+// Illustrations for the phone: the planet, two 1200s, an N64 controller,
+// and a few "photos". All drawn from shapes.
 import { roundRect, W, H, FONT } from './ui.js';
 
 let seed = 1989;
@@ -15,35 +15,7 @@ export function makeCanvas(w, h, scale = 2) {
   return [c, ctx];
 }
 
-/* ---------------- the dunk ---------------- */
-export function dunkSilhouette(ctx, cx, cy, s, { color = '#000', ball = '#000' } = {}) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(s, s);
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const seg = (pts, w) => { ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) ctx.lineTo(p[0], p[1]); ctx.stroke(); };
-  seg([[0, 0], [-34, 26], [-58, 70]], 17);          // trailing leg
-  seg([[0, 0], [46, 14], [98, 8]], 17);             // leading leg
-  ctx.beginPath(); ctx.ellipse(106, 6, 13, 6, -0.15, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(-62, 78, 10, 6, 0.6, 0, Math.PI * 2); ctx.fill();
-  seg([[0, 0], [14, -58]], 26);                     // torso
-  seg([[12, -52], [-14, -34], [-32, -8]], 12);      // trailing arm
-  seg([[16, -58], [42, -84], [70, -112]], 12);      // ball arm
-  ctx.beginPath(); ctx.arc(22, -80, 12.5, 0, Math.PI * 2); ctx.fill();   // head
-  ctx.fillStyle = ball;
-  ctx.beginPath(); ctx.arc(83, -123, 15, 0, Math.PI * 2); ctx.fill();    // ball
-  if (ball !== color) {
-    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(83, -123, 15, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(68, -123); ctx.quadraticCurveTo(83, -130, 98, -123); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(83, -138); ctx.quadraticCurveTo(76, -123, 83, -108); ctx.stroke();
-  }
-  ctx.restore();
-}
-
+/* ---------------- a skyline, for the photos ---------------- */
 export function skyline(ctx, x, y, w, h, color = '#120608') {
   reseed(23);
   ctx.fillStyle = color;
@@ -60,30 +32,6 @@ export function skyline(ctx, x, y, w, h, color = '#120608') {
   ctx.fillRect(x + w * 0.22 + 6, y - h * 0.22, 2, h * 0.3);
   ctx.fillRect(x + w * 0.22 + 18, y - h * 0.22, 2, h * 0.3);
   ctx.fillRect(x, y + h - 2, w, 2);
-}
-
-// The poster: a sunset, a skyline, a man in the air.
-export function dunkWallpaper() {
-  const [c, ctx] = makeCanvas(W, H);
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, '#1b0710');
-  sky.addColorStop(0.32, '#7a1220');
-  sky.addColorStop(0.62, '#e0511d');
-  sky.addColorStop(0.82, '#f6a03a');
-  sky.addColorStop(1, '#ffd37a');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(214, 318, 10, 214, 318, 150);
-  glow.addColorStop(0, 'rgba(255,238,170,0.95)');
-  glow.addColorStop(0.35, 'rgba(255,200,90,0.5)');
-  glow.addColorStop(1, 'rgba(255,160,60,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#ffe9a8';
-  ctx.beginPath(); ctx.arc(214, 318, 54, 0, Math.PI * 2); ctx.fill();
-  skyline(ctx, 0, 330, W, 150, '#150609');
-  dunkSilhouette(ctx, 132, 262, 1.08, { color: '#0b0507', ball: '#0b0507' });
-  return c;
 }
 
 /* ---------------- the planet ---------------- */
@@ -345,73 +293,6 @@ export function cartridge(ctx, x, y, w, color = '#8a8d92') {
   ctx.restore();
 }
 
-/* ---------------- a nitro buggy, side view ---------------- */
-export function rcCar(ctx, cx, cy, w, { bounce = 0, color = '#e8452e' } = {}) {
-  const k = w / 200;
-  ctx.save();
-  ctx.translate(cx - 100 * k, cy - 40 * k - bounce);
-  ctx.scale(k, k);
-  const wheel = (x, y, r) => {
-    ctx.fillStyle = '#151618';
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2b2d31';
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2;
-      ctx.beginPath(); ctx.arc(x + Math.cos(a) * (r - 3), y + Math.sin(a) * (r - 3), 2.6, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.fillStyle = '#d3d6da';
-    ctx.beginPath(); ctx.arc(x, y, r * 0.45, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#6b6f75';
-    ctx.beginPath(); ctx.arc(x, y, r * 0.16, 0, Math.PI * 2); ctx.fill();
-  };
-  // rear wing
-  ctx.fillStyle = '#1e1f22';
-  ctx.beginPath(); ctx.moveTo(150, 14); ctx.lineTo(196, 6); ctx.lineTo(198, 12); ctx.lineTo(152, 21); ctx.closePath(); ctx.fill();
-  ctx.fillRect(160, 16, 3, 20);
-  ctx.fillRect(184, 12, 3, 24);
-  // chassis and pipe
-  ctx.fillStyle = '#2e3136';
-  roundRect(ctx, 26, 54, 140, 12, 4);
-  ctx.fill();
-  ctx.fillStyle = '#b9bcc0';
-  ctx.beginPath(); ctx.ellipse(132, 66, 26, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#8e9195';
-  ctx.beginPath(); ctx.ellipse(158, 66, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
-  // body shell
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(14, 54); ctx.lineTo(28, 30); ctx.lineTo(70, 22); ctx.lineTo(118, 18); ctx.lineTo(168, 30); ctx.lineTo(178, 54);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.beginPath(); ctx.moveTo(40, 44); ctx.lineTo(160, 38); ctx.lineTo(162, 43); ctx.lineTo(41, 49); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#1b2733';
-  ctx.beginPath(); ctx.moveTo(32, 32); ctx.lineTo(72, 25); ctx.lineTo(76, 36); ctx.lineTo(38, 40); ctx.closePath(); ctx.fill();
-  // engine head fins
-  ctx.fillStyle = '#7d8187';
-  for (let i = 0; i < 4; i++) ctx.fillRect(104 + i * 5, 8 + i, 3, 12 - i);
-  // antenna
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(60, 26); ctx.lineTo(54, -22); ctx.stroke();
-  ctx.fillStyle = '#e03a2f';
-  ctx.beginPath(); ctx.arc(54, -23, 3, 0, Math.PI * 2); ctx.fill();
-  // number plate
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(96, 38, 9, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.font = `bold 11px ${FONT}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('89', 96, 39);
-  wheel(42, 62, 22);
-  wheel(152, 62, 24);
-  ctx.restore();
-}
-
 export function cassette(ctx, cx, cy, w, color = '#2b2d31') {
   const k = w / 120;
   ctx.save();
@@ -467,7 +348,7 @@ export function cake(ctx, cx, cy, w) {
   ctx.font = `bold 20px ${FONT}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('1989', 60, 74);
+  ctx.fillText('R', 60, 74);
   ctx.restore();
 }
 
@@ -481,11 +362,6 @@ export function makePhoto(kind) {
     ctx.fillStyle = bottom; ctx.fillRect(0, y, PW, PH - y);
   };
   switch (kind) {
-    case 'dunk': {
-      const wall = dunkWallpaper();
-      ctx.drawImage(wall, 0, 26, 640, 854, 0, 0, PW, PH);
-      break;
-    }
     case 'earth':
       ctx.drawImage(earthWallpaper(), 0, 26, 640, 854, 0, 0, PW, PH);
       break;
@@ -510,14 +386,6 @@ export function makePhoto(kind) {
       ctx.fillStyle = '#d63a2f';
       ctx.beginPath(); ctx.arc(90, 190, 5, 0, Math.PI * 2); ctx.fill();
       n64Controller(ctx, 160, 300, 220);
-      break;
-    case 'rc':
-      ground('#8ec8ef', '#9a7b53', 250);
-      ctx.fillStyle = '#c9a874';
-      ctx.beginPath(); ctx.ellipse(160, 300, 190, 40, 0, 0, Math.PI * 2); ctx.fill();
-      rcCar(ctx, 160, 250, 260, { bounce: 0 });
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.beginPath(); ctx.ellipse(160, 296, 120, 12, 0, 0, Math.PI * 2); ctx.fill();
       break;
     case 'cassette':
       ground('#d9cdb8', '#a88a62', 300);

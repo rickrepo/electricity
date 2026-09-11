@@ -4,7 +4,7 @@
 //   scrolling apps draw content from y = 0 under a nav bar, and the core
 //   scrolls, clips, and routes taps into content coordinates.
 import { W, H, CONTENT_Y, NAV_H, FONT, clamp, roundRect, wrapLines, group, separator, chevron, sectionLabel, toggle, slider, bubble, avatar, inRect, barButton, clockText, pad2 } from './ui.js';
-import { dunkSilhouette, n64Controller, rcCar, skyline } from './art.js';
+import { n64Controller } from './art.js';
 
 const CONTENT_H = H - CONTENT_Y;
 const text = (ctx, str, x, y, { font = `15px ${FONT}`, color = '#000', align = 'left', baseline = 'alphabetic' } = {}) => {
@@ -22,11 +22,15 @@ const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); retur
 /* ================================================================== */
 /* Safari: the about page                                              */
 /* ================================================================== */
+// The welcome page, drawn like a small website: a blue masthead, a few
+// lines on what the site does, and a button that opens the real thing.
 const ABOUT = [
-  ['h1', "I'm Ricky."],
-  ['p', 'I designed this website. Toronto, born in 1989.'],
-  ['h2', 'Also'],
-  ['link', 'autismwaitlist.com'],
+  ['hero', 'Welcome', "I'm Ricky, and this is my phone. It opens onto a site I built."],
+  ['h2', 'autismwaitlist.com'],
+  ['p', 'A site that advocates for better care for children with autism in Ontario.'],
+  ['bullet', 'Letters are generated and sent to MPPs.'],
+  ['bullet', 'Automated follow-up emails go to provincial leaders, showing what constituents are asking for.'],
+  ['button', 'Open autismwaitlist.com'],
 ];
 
 // Safari's pages. The first is drawn here. Every other one is a real web
@@ -39,7 +43,7 @@ const ABOUT = [
 // through the widths.
 const LAYOUTS = [[1280, 'desktop'], [820, 'tablet'], [430, 'phone']];
 const PAGES = [
-  { title: "I'm Ricky", url: 'ricky.example', live: false },
+  { title: 'Welcome', url: 'ricky.example', live: false },
   { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true, layout: 0 },
 ];
 
@@ -72,12 +76,14 @@ const safari = {
     const blocks = [];
     let y = 14;
     const X = 16, WIDTH = W - 32;
-    for (const [type, value] of ABOUT) {
-      const b = { type, value, y };
-      if (type === 'h1') { b.h = 40; }
-      else if (type === 'p') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, value, WIDTH); b.h = b.lines.length * 21 + 14; }
-      else if (type === 'h2') { b.y += 8; b.h = 40; }
-      else if (type === 'link') { b.h = 34; }
+    y = 0;
+    for (const [type, value, sub] of ABOUT) {
+      const b = { type, value, sub, y };
+      if (type === 'hero') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, sub, WIDTH); b.h = 70 + b.lines.length * 20; }
+      else if (type === 'h2') { b.y += 12; b.h = 32; }
+      else if (type === 'p') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, value, WIDTH); b.h = b.lines.length * 21 + 6; }
+      else if (type === 'bullet') { m.font = `15px ${FONT}`; b.lines = wrapLines(m, value, WIDTH - 26); b.h = b.lines.length * 21 + 6; }
+      else if (type === 'button') { b.y += 10; b.h = 44; }
       blocks.push(b);
       y = b.y + b.h;
     }
@@ -101,12 +107,36 @@ const safari = {
       text(ctx, 'Pick the phone up to browse', W / 2, 174, { font: `13px ${FONT}`, color: '#b4bac2', align: 'center' });
       return;
     }
+    ctx.fillStyle = '#f5f7fa';
+    ctx.fillRect(0, 0, W, s.height + 400);
     for (const b of s.blocks) {
       const { type, value, y } = b;
-      if (type === 'h1') text(ctx, value, s.X, y + 30, { font: `bold 30px ${FONT}`, color: '#111' });
-      else if (type === 'p') b.lines.forEach((l, i) => text(ctx, l, s.X, y + 16 + i * 21, { font: `15px ${FONT}`, color: '#222' }));
-      else if (type === 'h2') { text(ctx, value, s.X, y + 26, { font: `bold 19px ${FONT}`, color: '#111' }); ctx.fillStyle = '#3a7fdb'; ctx.fillRect(s.X, y + 32, 28, 3); }
-      else if (type === 'link') { text(ctx, value, s.X, y + 20, { font: `15px ${FONT}`, color: '#1a5cc8' }); ctx.fillStyle = '#1a5cc8'; ctx.fillRect(s.X, y + 23, ctx.measureText(value).width, 1); b.hit = { x: s.X, y: y + 4, w: 200, h: 26 }; }
+      if (type === 'hero') {
+        const g = ctx.createLinearGradient(0, y, 0, y + b.h);
+        g.addColorStop(0, '#3d8ee0'); g.addColorStop(1, '#1f5fb3');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, y, W, b.h);
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.beginPath(); ctx.arc(W - 30, y + 20, 70, 0, Math.PI * 2); ctx.fill();
+        text(ctx, value, s.X, y + 40, { font: `bold 30px ${FONT}`, color: '#fff' });
+        b.lines.forEach((l, i) => text(ctx, l, s.X, y + 62 + i * 20, { font: `15px ${FONT}`, color: 'rgba(255,255,255,0.92)' }));
+      } else if (type === 'h2') { text(ctx, value, s.X, y + 22, { font: `bold 20px ${FONT}`, color: '#14233a' }); ctx.fillStyle = '#3d8ee0'; ctx.fillRect(s.X, y + 28, 34, 3); }
+      else if (type === 'p') b.lines.forEach((l, i) => text(ctx, l, s.X, y + 15 + i * 21, { font: `15px ${FONT}`, color: '#2a3442' }));
+      else if (type === 'bullet') {
+        ctx.fillStyle = '#3d8ee0';
+        ctx.beginPath(); ctx.arc(s.X + 8, y + 11, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(s.X + 4, y + 11); ctx.lineTo(s.X + 7, y + 14); ctx.lineTo(s.X + 12, y + 8); ctx.stroke();
+        b.lines.forEach((l, i) => text(ctx, l, s.X + 26, y + 16 + i * 21, { font: `15px ${FONT}`, color: '#2a3442' }));
+      } else if (type === 'button') {
+        const g = ctx.createLinearGradient(0, y, 0, y + 44);
+        g.addColorStop(0, '#5fa7ef'); g.addColorStop(1, '#2468c2');
+        roundRect(ctx, s.X, y, s.WIDTH, 44, 10);
+        ctx.fillStyle = g; ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+        text(ctx, value, W / 2, y + 22, { font: `bold 16px ${FONT}`, color: '#fff', align: 'center', baseline: 'middle' });
+        b.hit = { x: s.X, y, w: s.WIDTH, h: 44 };
+      }
     }
   },
   overlay(ctx, s, os, now) {
@@ -166,8 +196,8 @@ const safari = {
     }
   },
   tap(x, y, s) {
-    const link = s.blocks.find((b) => b.type === 'link');
-    if (!PAGES[s.page].live && link?.hit && inRect(link.hit, x, y)) { s.page = 1; s.scroll = 0; }
+    const button = s.blocks.find((b) => b.type === 'button');
+    if (!PAGES[s.page].live && button?.hit && inRect(button.hit, x, y)) { s.page = 1; s.scroll = 0; }
   },
   tabTap(x, y, s, os, now) {
     if (y < H - 44) return;
@@ -195,7 +225,7 @@ const safari = {
 const THREADS = [
   { who: 'Autism Waitlist', initials: 'AW', color: '#2f7fd6', time: '2:41 PM', unread: 0, msgs: [[0, 'The site is up.'], [1, 'On it.'], [0, 'Open Safari on the phone and take a look.']] },
   { who: 'Deck crew', initials: 'DC', color: '#3a7fdb', time: '11:05 AM', msgs: [[0, 'Bringing the 1200s Saturday?'], [1, 'Both. And the crate.'], [0, 'Bring the good needle this time'], [1, 'It was the good needle.']] },
-  { who: 'Race day', initials: 'RD', color: '#e8842e', time: 'Yesterday', msgs: [[0, 'Track opens at 9.'], [1, 'Charging the packs now.'], [0, 'Bring the ramps?'], [1, 'Both of them.']] },
+  { who: 'Record fair', initials: 'RF', color: '#e8842e', time: 'Yesterday', msgs: [[0, 'Doors at 8 on Saturday.'], [1, 'Bringing the crate.'], [0, 'Save you the box of 12-inch singles?'], [1, 'Please.']] },
 ];
 
 // Texts that arrive while the phone sits on the desk. The list and the thread
@@ -277,7 +307,7 @@ const messages = {
 /* ================================================================== */
 const MAILS = [
   { from: 'Autism Waitlist', subject: 'Your site is live', time: '3:12 PM', unread: true, body: 'autismwaitlist.com is up and answering. Open Safari on this phone to see it.' },
-  { from: 'Record Fair', subject: 'Saturday, Hall B', time: '9:48 AM', unread: true, body: 'Doors at 8. Bring cash and a crate. Someone is selling a box of 12-inch singles from 1989 and we thought of you.' },
+  { from: 'Record Fair', subject: 'Saturday, Hall B', time: '9:48 AM', unread: true, body: 'Doors at 8. Bring cash and a crate. Someone is selling a box of 12-inch singles from the eighties and we thought of you.' },
   { from: 'Toronto Public Library', subject: 'Your hold is ready', time: 'Yesterday', body: 'The item you placed on hold is waiting at the desk. It will be held for seven days.' },
   { from: 'N64 Parts Co.', subject: 'Controller sticks back in stock', time: 'Monday', body: 'The replacement sticks you asked about are in. Limit four per customer, which we assume is exactly your number.' },
   { from: 'Ricky', subject: 'Note to self', time: 'Sunday', body: 'Fix the tonearm on the left deck. Then stop touching it.' },
@@ -332,7 +362,7 @@ const mail = {
 /* ================================================================== */
 /* Calendar                                                            */
 /* ================================================================== */
-const EVENTS = [[0, 'Site goes live'], [3, 'Race day · the track, 9 AM'], [6, 'Record fair · Hall B'], [12, 'New tires arrive (allegedly)']];
+const EVENTS = [[0, 'Site goes live'], [3, 'Deck night · 9 PM'], [6, 'Record fair · Hall B'], [12, 'New needle arrives (allegedly)']];
 
 const calendar = {
   id: 'calendar', name: 'Calendar', top: '#ffffff', bottom: '#e6e6e6',
@@ -436,17 +466,6 @@ function cameraScene(ctx, now, x0 = 0, y0 = 0, w = W, h = H - 64) {
   ctx.fillRect(0, h * 0.7, w, h * 0.3);
   ctx.fillStyle = 'rgba(0,0,0,0.12)';
   for (let y = h * 0.7; y < h; y += 14) ctx.fillRect(0, y, w, 1);
-  // the poster
-  ctx.fillStyle = '#111';
-  ctx.fillRect(28, 30, 96, 130);
-  ctx.save();
-  ctx.beginPath(); ctx.rect(32, 34, 88, 122); ctx.clip();
-  const g = ctx.createLinearGradient(0, 34, 0, 156);
-  g.addColorStop(0, '#5a0f1d'); g.addColorStop(0.65, '#e0511d'); g.addColorStop(1, '#f6b35a');
-  ctx.fillStyle = g; ctx.fillRect(32, 34, 88, 122);
-  skyline(ctx, 32, 126, 88, 30, '#150609');
-  dunkSilhouette(ctx, 72, 118, 0.36, { color: '#0b0507', ball: '#0b0507' });
-  ctx.restore();
   // the cabinet with the console on top
   ctx.fillStyle = '#5a4a3c';
   ctx.fillRect(170, 196, 120, 94);
@@ -459,12 +478,6 @@ function cameraScene(ctx, now, x0 = 0, y0 = 0, w = W, h = H - 64) {
   ctx.fillStyle = '#d63a2f';
   ctx.beginPath(); ctx.arc(186, 188, 2.5, 0, Math.PI * 2); ctx.fill();
   n64Controller(ctx, 232, 316, 70);
-  // the buggy doing laps of the rug
-  const cx = ((now / 28) % (w + 260)) - 130;
-  const bounce = Math.abs(Math.sin(now / 90)) * 1.5;
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.beginPath(); ctx.ellipse(cx, h * 0.93, 70, 6, 0, 0, Math.PI * 2); ctx.fill();
-  rcCar(ctx, cx, h * 0.9 - 6, 150, { bounce });
   ctx.restore();
 }
 
@@ -732,7 +745,7 @@ const calculator = {
 /* ================================================================== */
 /* Notes                                                               */
 /* ================================================================== */
-const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. fix the left deck tonearm', '4. return the library book (1998)', '5. charge the buggy packs', '', 'Nothing here is real except 1989.'];
+const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. fix the left deck tonearm', '4. return the library book (1998)', '5. sort the crate'];
 
 const notes = {
   id: 'notes', name: 'Notes', top: '#fff0a0', bottom: '#f3c53c',
@@ -765,7 +778,7 @@ const settings = {
     const st = os.settings;
     s.hits = {};
     if (s.view === 'about') {
-      const rows = [['Model', 'R1'], ['Born', '1989'], ['Software', '1.0 (2026)'], ['Storage', '8 GB, mostly cars'], ['Photos', String(os.photos.length)], ['Serial', 'RCKY-1989-0001'], ['Wallpaper', st.wallpaper === 'ripples' ? 'Ripples' : 'The planet']];
+      const rows = [['Model', 'R1'], ['Software', '1.0 (2026)'], ['Storage', '8 GB, mostly records'], ['Photos', String(os.photos.length)], ['Serial', 'RCKY-2007-0001'], ['Wallpaper', st.wallpaper === 'ripples' ? 'Ripples' : 'The planet']];
       group(ctx, 10, 12, W - 20, rows.length * 44);
       rows.forEach(([k, v], i) => {
         const y = 12 + i * 44;

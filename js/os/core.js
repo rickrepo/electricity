@@ -57,8 +57,17 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     if (st.mode !== 'ringing') return;
     const who = st.call.who;
     st.call = null;
+    st.knob = 0;
     if (missed) { calls.missed++; st.alert = { who, text: 'Missed Call', kind: 'call', thread: 0 }; }
     setMode('lock', now);
+  };
+  // sliding while it rings answers: the Phone app takes the call, timer running
+  const answerCall = (now) => {
+    const who = st.call.who;
+    st.call = null;
+    st.knob = 0;
+    os.open('phone', (app, s) => { s.view = 'calling'; s.callee = who; s.callStart = now - 2500; s.number = ''; });
+    st.since = now;
   };
   const os = {
     settings, photos, measure,
@@ -262,18 +271,24 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     ctx.lineWidth = 1;
     ctx.stroke();
     const tx = TRACK.x + KNOB.w + KNOB.pad + (TRACK.w - KNOB.w - KNOB.pad) / 2;
+    const textAlpha = clamp(1 - st.knob * 2.5, 0, 1);
     ctx.font = `300 22px ${FONT}`;
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = `rgba(255,255,255,${0.4 * textAlpha})`;
     ctx.fillText('slide to answer', tx, 449);
     const phase = (now / 2600) % 1;
     const bx = tx - 100 + phase * 230;
     const sg = ctx.createLinearGradient(bx - 40, 0, bx + 40, 0);
     sg.addColorStop(0, 'rgba(255,255,255,0)');
-    sg.addColorStop(0.5, 'rgba(255,255,255,0.9)');
+    sg.addColorStop(0.5, `rgba(255,255,255,${0.9 * textAlpha})`);
     sg.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = sg;
     ctx.fillText('slide to answer', tx, 449);
-    const kx = TRACK.x + KNOB.pad, ky = TRACK.y + KNOB.pad;
+    if (ptr.mode !== 'answer' && st.releaseAt) {
+      const t = Math.min(1, (now - st.releaseAt) / 320);
+      st.knob = st.releaseFrom * (1 - easeOut(t));
+      if (t >= 1) st.releaseAt = 0;
+    }
+    const kx = TRACK.x + KNOB.pad + st.knob * TRAVEL, ky = TRACK.y + KNOB.pad;
     const kg = ctx.createLinearGradient(0, ky, 0, ky + KNOB.h);
     kg.addColorStop(0, '#8fe07c');
     kg.addColorStop(0.5, '#4fc24a');
@@ -596,11 +611,10 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     st.dirty = true;
     Object.assign(ptr, { active: true, mode: null, x0: x, y0: y, t0: now, moved: false, lastY: y, lastT: now, vel: 0 });
     if (st.alert && (st.mode === 'home' || st.mode === 'app')) { ptr.mode = 'alert'; return true; }
-    if (st.mode === 'ringing') { ptr.active = false; return false; }
-    if (st.mode === 'lock') {
+    if (st.mode === 'ringing' || st.mode === 'lock') {
       const kx = TRACK.x + KNOB.pad + st.knob * TRAVEL, ky = TRACK.y + KNOB.pad;
       if (x < kx - 8 || x > kx + KNOB.w + 8 || y < ky - 10 || y > ky + KNOB.h + 10) { ptr.active = false; return false; }
-      ptr.mode = 'knob';
+      ptr.mode = st.mode === 'ringing' ? 'answer' : 'knob';
       st.releaseAt = 0;
       ptr.grab = x - kx;
       return true;
@@ -630,7 +644,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   function move(x, y, now = performance.now()) {
     if (!ptr.active) return;
     st.dirty = true;
-    if (ptr.mode === 'knob') { st.knob = clamp((x - ptr.grab - TRACK.x - KNOB.pad) / TRAVEL, 0, 1); return; }
+    if (ptr.mode === 'knob' || ptr.mode === 'answer') { st.knob = clamp((x - ptr.grab - TRACK.x - KNOB.pad) / TRAVEL, 0, 1); return; }
     if (!ptr.moved && Math.hypot(x - ptr.x0, y - ptr.y0) > 8) ptr.moved = true;
     if (st.mode !== 'app' || !st.app) return;
     const app = st.app, s = appState(app);
@@ -661,6 +675,13 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     }
     if (ptr.mode === 'knob') {
       if (st.knob > 0.96) { st.knob = 1; setMode('unlocking', now); }
+      else { st.releaseAt = now; st.releaseFrom = st.knob; }
+      return;
+    }
+    if (ptr.mode === 'answer') {
+      // a slide that finishes just as the ring gives up still counts: it unlocks
+      if (st.knob > 0.96 && st.mode === 'ringing') answerCall(now);
+      else if (st.knob > 0.96 && st.mode === 'lock') { st.knob = 1; setMode('unlocking', now); }
       else { st.releaseAt = now; st.releaseFrom = st.knob; }
       return;
     }
@@ -724,6 +745,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     on(now = performance.now()) { if (st.mode === 'off') setMode('lock', now); },
     wake(now = performance.now()) { if (st.mode === 'off') setMode('waking', now); },
     sleep(now = performance.now()) {
+      if (st.mode === 'ringing') { endCall(true, now); return; }
       if (st.mode === 'off' || st.mode === 'boot' || st.mode === 'sleeping') return;
       st.wasHome = ['home', 'opening', 'closing', 'unlocking'].includes(st.mode);
       if (st.mode === 'opening' || st.mode === 'closing') st.app = null;

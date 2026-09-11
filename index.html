@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Ricky's Phone</title>
-  <meta name="description" content="A 2007-era iPhone rebuilt from three.js primitives, set up the way someone born in 1989 would have it. Pick it up, slide to unlock, open Safari.">
+  <meta name="description" content="A 2007-era iPhone rebuilt from three.js primitives, on a desk in a den at dusk. Pick it up, slide to unlock, open Safari.">
   <meta property="og:title" content="Ricky's Phone">
-  <meta property="og:description" content="A 2007-era iPhone rebuilt from three.js primitives, set up the way someone born in 1989 would have it. Pick it up, slide to unlock, open Safari.">
+  <meta property="og:description" content="A 2007-era iPhone rebuilt from three.js primitives, on a desk in a den at dusk. Pick it up, slide to unlock, open Safari.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://rickrepo.github.io/electricity/assets/preview.jpg">
   <meta name="theme-color" content="#171412">
@@ -15,9 +15,16 @@
 </head>
 <body>
   <div id="stage" aria-label="A room from 2007 with a first-generation iPhone on the desk"></div>
-  <div id="loading" role="progressbar" aria-label="Loading the room">
-    <div class="mark">R</div>
-    <div class="bar"><i></i></div>
+  <div id="loading" role="status" aria-label="Loading the room">
+    <div class="panel">
+      <div class="head"><span>RICKY ROM  ·  DEN 2007</span><span class="mark">R</span></div>
+      <div class="body">
+        <div class="rows"></div>
+        <div class="mini" aria-hidden="true"><i class="screen"><b>R</b></i><i class="home"></i></div>
+      </div>
+      <div class="bar"></div>
+      <div class="tail"></div>
+    </div>
   </div>
 
   <div id="fail" class="fail" hidden>
