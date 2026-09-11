@@ -32,12 +32,13 @@ const ABOUT = [
 // Safari's pages. The first is drawn here. Every other one is a real web
 // page, shown in a frame laid over the screen while the phone is in hand.
 // Only pages listed here can be reached: the address field takes no typing.
-// `viewport` is the width in CSS pixels the live page is laid out at; the
-// frame is then scaled to fit the screen, the way the first iPhone showed a
-// page at a wider virtual width and shrank it to fit.
+// A live page is laid out at one of these widths and scaled to fit the
+// screen, the way the first iPhone showed a page at a wider virtual width and
+// shrank it to fit. The toolbar's right-hand button steps through them.
+const LAYOUTS = [[430, 'phone'], [768, 'tablet'], [1024, 'desktop']];
 const PAGES = [
   { title: "I'm Ricky", url: 'ricky.example', live: false },
-  { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true, viewport: 430 },
+  { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true, layout: 0 },
 ];
 
 // A live page can also go to a tab of its own (the icon in the middle of the
@@ -79,13 +80,13 @@ const safari = {
       y = b.y + b.h;
     }
     safariSeen = true;
-    return { blocks, height: y + 8, X, WIDTH, page: 0, note: 0, noteText: '' };
+    return { blocks, height: y + 8, X, WIDTH, page: 0, note: 0, noteText: '', layout: -1 };
   },
   badge() { return safariSeen ? 0 : 1; },
   animating(s, now) { return s.note > 0 && now - s.note < 3200; },
   bar() { return { title: '' }; },
   height(s) { return PAGES[s.page].live ? CONTENT_H - 44 : s.height; },
-  site(s) { return PAGES[s.page].live ? { url: PAGES[s.page].url, viewport: PAGES[s.page].viewport || 430, rect: { x: 0, y: CONTENT_Y, w: W, h: H - CONTENT_Y - 44 } } : null; },
+  site(s) { const p = PAGES[s.page]; return p.live ? { url: p.url, viewport: LAYOUTS[s.layout < 0 ? p.layout || 0 : s.layout][0], rect: { x: 0, y: CONTENT_Y, w: W, h: H - CONTENT_Y - 44 } } : null; },
   draw(ctx, s) {
     const page = PAGES[s.page];
     if (page.live) {
@@ -144,13 +145,23 @@ const safari = {
     ctx.lineWidth = 2;
     ctx.strokeRect(188, y + 16, 16, 16);
     ctx.beginPath(); ctx.moveTo(197, y + 23); ctx.lineTo(210, y + 10); ctx.moveTo(203, y + 10); ctx.lineTo(210, y + 10); ctx.lineTo(210, y + 17); ctx.stroke();
-    ctx.strokeStyle = '#fff';
-    ctx.strokeRect(266, y + 16, 15, 15);
-    ctx.strokeRect(271, y + 11, 15, 15);
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold 8px ${FONT}`;
-    ctx.textAlign = 'center';
-    ctx.fillText(String(PAGES.length), 278.5, y + 22.5);
+    if (page.live) {
+      // a magnifier: step the page through phone, tablet and desktop widths
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(274, y + 19, 7, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(279, y + 24); ctx.lineTo(286, y + 31); ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(270, y + 19); ctx.lineTo(278, y + 19); ctx.moveTo(274, y + 15); ctx.lineTo(274, y + 23); ctx.stroke();
+    } else {
+      ctx.strokeStyle = '#fff';
+      ctx.strokeRect(266, y + 16, 15, 15);
+      ctx.strokeRect(271, y + 11, 15, 15);
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold 8px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.fillText(String(PAGES.length), 278.5, y + 22.5);
+    }
   },
   tap(x, y, s) {
     const link = s.blocks.find((b) => b.type === 'link');
@@ -165,7 +176,14 @@ const safari = {
       s.noteOk = openTab(PAGES[s.page].url);
       s.noteText = s.noteOk ? 'Opened in a new tab' : 'New tab blocked. Type the address.';
       s.note = now || performance.now();
-    } else if (x >= 240) { s.page = (s.page + 1) % PAGES.length; s.scroll = 0; }
+    } else if (x >= 240) {
+      if (!PAGES[s.page].live) { s.page = (s.page + 1) % PAGES.length; s.scroll = 0; return; }
+      const cur = s.layout < 0 ? PAGES[s.page].layout || 0 : s.layout;
+      s.layout = (cur + 1) % LAYOUTS.length;
+      s.noteOk = true;
+      s.noteText = `Laid out for a ${LAYOUTS[s.layout][1]}`;
+      s.note = now || performance.now();
+    }
   },
 };
 

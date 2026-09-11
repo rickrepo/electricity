@@ -244,18 +244,31 @@ async function main() {
   // over the page area of the screen lines up with it exactly. The frame is
   // not sandboxed: the site keeps its cookies and storage and behaves as it
   // does in any browser, which a sandbox would take away.
-  const site = document.createElement('iframe');
+  // The frame sits in a clipping box of the page area's exact size, laid out
+  // at the page's chosen width (never narrower than the area, so it is never
+  // magnified) and scaled down to fit; a desktop browser's scrollbar on the
+  // frame's right edge falls outside the box and is clipped away.
+  const site = document.createElement('div');
   site.id = 'site';
   site.hidden = true;
-  site.title = 'Web page';
-  site.referrerPolicy = 'no-referrer';
-  site.setAttribute('allow', 'fullscreen');
+  const frame = document.createElement('iframe');
+  frame.id = 'siteFrame';
+  frame.title = 'Web page';
+  frame.referrerPolicy = 'no-referrer';
+  frame.setAttribute('allow', 'fullscreen');
+  site.append(frame);
   document.body.append(site);
+  // how wide this browser's scrollbars are (nothing, where they float over the page)
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;top:-9999px;width:100px;height:100px;overflow:scroll;visibility:hidden';
+  document.body.append(probe);
+  const scrollbar = probe.offsetWidth - probe.clientWidth;
+  probe.remove();
   const siteCorner = new THREE.Vector3();
   const placeSite = () => {
     const page = state === 'up' && !move.active ? os.site : null;
     if (!page) { if (!site.hidden) site.hidden = true; return; }
-    if (site.dataset.url !== page.url) { site.dataset.url = page.url; site.src = page.url; }
+    if (site.dataset.url !== page.url) { site.dataset.url = page.url; frame.src = page.url; }
     const toCss = (px, py) => {
       siteCorner.set((px / os.width - 0.5) * SPEC.screen.width, (0.5 - py / os.height) * SPEC.screen.height, 0);
       phone.screen.localToWorld(siteCorner).project(camera);
@@ -263,13 +276,15 @@ async function main() {
     };
     const a = toCss(page.rect.x, page.rect.y), b = toCss(page.rect.x + page.rect.w, page.rect.y + page.rect.h);
     const w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y);
-    // the page is laid out at its own viewport width and shrunk to the screen
-    const k = w / page.viewport;
+    const layout = Math.max(page.viewport, w);
+    const k = w / layout;
     site.style.left = `${Math.min(a.x, b.x)}px`;
     site.style.top = `${Math.min(a.y, b.y)}px`;
-    site.style.width = `${page.viewport}px`;
-    site.style.height = `${h / k}px`;
-    site.style.transform = `scale(${k})`;
+    site.style.width = `${w}px`;
+    site.style.height = `${h}px`;
+    frame.style.width = `${layout + scrollbar}px`;
+    frame.style.height = `${h / k}px`;
+    frame.style.transform = `scale(${k})`;
     if (site.hidden) site.hidden = false;
   };
 

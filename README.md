@@ -79,7 +79,8 @@ The phone runs software drawn in the manner of the first iPhone OS:
   Ricky. I designed this website" with a link, and autismwaitlist.com, the
   actual site, shown in a frame laid over the screen while the phone is in
   hand; the page is laid out at a phone's width and scaled to fit, the way
-  the first iPhone shrank pages to the screen. The toolbar's middle button opens the current site in a tab of its
+  the first iPhone shrank pages to the screen, and the magnifier in the
+  toolbar steps it through phone, tablet and desktop widths. The toolbar's middle button opens the current site in a tab of its
   own, for hosts that will not show it in a frame. Two things can keep the
   frame blank: the site's own headers may forbid being shown inside another
   page, and the claude.ai preview of this room forbids frames to other

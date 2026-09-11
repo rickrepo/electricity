@@ -44,8 +44,9 @@ body.in-hand #stage::after { opacity: 0.35; }
 #loading.done { opacity: 0; pointer-events: none; }
 
 /* the other site, laid over Safari's page area while the phone is in hand */
-#site { position: fixed; z-index: 3; border: 0; background: #fff; transform-origin: 0 0; }
+#site { position: fixed; z-index: 3; overflow: hidden; background: #fff; }
 #site[hidden] { display: none; }
+#siteFrame { display: block; border: 0; background: #fff; transform-origin: 0 0; }
 
 .fail { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: var(--bg); text-align: center; font-size: 16px; line-height: 1.5; }
 .fail[hidden] { display: none; }
