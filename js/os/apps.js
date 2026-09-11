@@ -794,12 +794,17 @@ const settings = {
 /* ================================================================== */
 const KEYS = [['1', ''], ['2', 'ABC'], ['3', 'DEF'], ['4', 'GHI'], ['5', 'JKL'], ['6', 'MNO'], ['7', 'PQRS'], ['8', 'TUV'], ['9', 'WXYZ'], ['*', ''], ['0', '+'], ['#', '']];
 
+// Calls that rang while the phone sat on the desk and were not answered.
+export const calls = { missed: 0 };
+
 const phone = {
   id: 'phone', name: 'Phone', top: '#8ce87a', bottom: '#1f8f31',
   fixed: true,
   init() { return { number: '', view: 'keypad', callStart: 0, callee: '' }; },
+  badge() { return calls.missed; },
   animating(s) { return s.view === 'calling'; },
   draw(ctx, s, os, now) {
+    calls.missed = 0;
     if (s.view === 'calling') {
       const g = ctx.createLinearGradient(0, 20, 0, H);
       g.addColorStop(0, '#3b4a5e'); g.addColorStop(1, '#121821');

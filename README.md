@@ -21,8 +21,13 @@ While the phone sits on the desk, texts arrive: the phone rattles on its
 stand (and again every few seconds while the text sits unread), the screen
 shows who and what, and the slider says "slide to view". Slide, and the
 thread opens. Over the home screen or an app the text comes as a blue alert
-with Close and Reply. Red badges sit on Messages and Mail for what is
-unread, and on Safari until it has been opened.
+with Close and Reply. A call comes in too, the way the first iPhone showed
+one: the caller's picture fills the screen, the name sits in a dark band,
+the slider turns green and says "slide to answer", and the phone rings and
+rattles until you pick it up, at which point it is a missed call on the
+lock screen and you unlock as usual. Red badges sit on Messages and Mail
+for what is unread, on Phone for the missed call, and on Safari until it
+has been opened.
 
 Click the buggy to drive it: the arrow keys or WASD steer and throttle, or
 drag anywhere (up for throttle, sideways to steer) on a touch screen. The

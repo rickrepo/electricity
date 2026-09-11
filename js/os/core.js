@@ -5,7 +5,7 @@
 // sleep. The canvas is redrawn only when something on it changes.
 import { W, H, STATUS_H, CONTENT_Y, FONT, clamp, roundRect, navBar, pinstripes, inRect, clockText, wrapLines } from './ui.js';
 import { ICON, renderAtlas } from './icons.js';
-import { APPS, DOCK, ALL, PHOTO_KINDS, inbox } from './apps.js';
+import { APPS, DOCK, ALL, PHOTO_KINDS, inbox, calls } from './apps.js';
 import { earthWallpaper, rippleWallpaper, makePhoto } from './art.js';
 
 let S = 2;
@@ -32,17 +32,35 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   const settings = { wallpaper: 'earth', brightness: 1, airplane: false };
   const photos = PHOTO_KINDS.map(([kind, caption]) => ({ canvas: makePhoto(kind), caption }));
   let atlas = null, atlasMinute = -1, home = null;
+  let callPhoto = null; // the caller's picture, drawn on first ring
 
   const st = {
     mode: 'off', since: 0, last: -1e9, wasHome: false, dirty: true, minute: -1,
     knob: 0, releaseAt: 0, releaseFrom: 0,
     app: null, appRect: null, pressed: null, states: {},
-    alert: null, buzzAt: 0,
+    alert: null, buzzAt: 0, call: null,
     listeners: new Set(),
   };
   const ptr = { active: false, mode: null, x0: 0, y0: 0, t0: 0, moved: false, lastY: 0, lastT: 0, vel: 0 };
   const setMode = (mode, now) => { st.mode = mode; st.since = now; st.dirty = true; for (const fn of st.listeners) fn(mode); };
 
+  const THREAD_NAMES = ['Mom', 'Deck crew', 'Race day'];
+  // a call comes in on the lock screen and rings until it is answered, missed, or gives up
+  const ringCall = (i, now) => {
+    if (st.mode !== 'lock') return false;
+    st.call = { who: THREAD_NAMES[i] || 'Unknown', thread: i, since: now };
+    st.alert = null;
+    st.buzzAt = now;
+    setMode('ringing', now);
+    return true;
+  };
+  const endCall = (missed, now) => {
+    if (st.mode !== 'ringing') return;
+    const who = st.call.who;
+    st.call = null;
+    if (missed) { calls.missed++; st.alert = { who, text: 'Missed Call', kind: 'call', thread: 0 }; }
+    setMode('lock', now);
+  };
   const os = {
     settings, photos, measure,
     addPhoto(c, caption) { photos.unshift({ canvas: c, caption }); st.dirty = true; },
@@ -166,7 +184,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       const tx = TRACK.x + KNOB.w + KNOB.pad + (TRACK.w - KNOB.w - KNOB.pad) / 2;
       ctx.font = `300 22px ${FONT}`;
       ctx.textAlign = 'center';
-      const label = st.alert ? 'slide to view' : 'slide to unlock';
+      const label = st.alert && st.alert.kind !== 'call' ? 'slide to view' : 'slide to unlock';
       ctx.fillStyle = `rgba(255,255,255,${0.35 * textAlpha})`;
       ctx.fillText(label, tx, 449);
       const phase = (now / 2600) % 1;
@@ -200,6 +218,89 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     ctx.lineTo(kx + 34, ky + 29); ctx.lineTo(kx + 34, ky + 23); ctx.lineTo(kx + 21, ky + 23);
     ctx.closePath();
     ctx.fill();
+  }
+
+  /* ---------- an incoming call, the way the first iPhone showed one ---------- */
+  // The caller's picture fills the screen; a dark band at the top carries the
+  // name and "incoming call"; the slider at the bottom turns green and says
+  // "slide to answer". It rings until it is picked up (missed) or gives up.
+  function drawCall(now) {
+    if (!callPhoto) callPhoto = makePhoto('beach');
+    const scale = Math.max(W / callPhoto.width, H / callPhoto.height);
+    const pw = callPhoto.width * scale, ph = callPhoto.height * scale;
+    ctx.drawImage(callPhoto, (W - pw) / 2, (H - ph) / 2, pw, ph);
+    statusBar();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 20, W, 110);
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.fillRect(0, 20, W, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 129, W, 1);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetY = 1;
+    ctx.font = `200 40px ${FONT}`;
+    ctx.fillText(st.call.who, W / 2, 78);
+    ctx.font = `400 17px ${FONT}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const dots = '.'.repeat(1 + (Math.floor((now - st.call.since) / 500) % 3));
+    ctx.fillText(`incoming call${dots}`, W / 2, 108);
+    ctx.shadowColor = 'transparent';
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, 400, W, 80);
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.fillRect(0, 400, W, 1);
+    const g = ctx.createLinearGradient(0, TRACK.y, 0, TRACK.y + TRACK.h);
+    g.addColorStop(0, 'rgba(0,0,0,0.78)');
+    g.addColorStop(1, 'rgba(34,34,36,0.78)');
+    roundRect(ctx, TRACK.x, TRACK.y, TRACK.w, TRACK.h, TRACK.r);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    const tx = TRACK.x + KNOB.w + KNOB.pad + (TRACK.w - KNOB.w - KNOB.pad) / 2;
+    ctx.font = `300 22px ${FONT}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillText('slide to answer', tx, 449);
+    const phase = (now / 2600) % 1;
+    const bx = tx - 100 + phase * 230;
+    const sg = ctx.createLinearGradient(bx - 40, 0, bx + 40, 0);
+    sg.addColorStop(0, 'rgba(255,255,255,0)');
+    sg.addColorStop(0.5, 'rgba(255,255,255,0.9)');
+    sg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sg;
+    ctx.fillText('slide to answer', tx, 449);
+    const kx = TRACK.x + KNOB.pad, ky = TRACK.y + KNOB.pad;
+    const kg = ctx.createLinearGradient(0, ky, 0, ky + KNOB.h);
+    kg.addColorStop(0, '#8fe07c');
+    kg.addColorStop(0.5, '#4fc24a');
+    kg.addColorStop(0.5001, '#3aa93a');
+    kg.addColorStop(1, '#1f7f2a');
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetY = 1;
+    roundRect(ctx, kx, ky, KNOB.w, KNOB.h, KNOB.r);
+    ctx.fillStyle = kg;
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.stroke();
+    // a handset on the knob
+    ctx.save();
+    ctx.translate(kx + KNOB.w / 2, ky + KNOB.h / 2);
+    ctx.rotate(-0.75);
+    ctx.fillStyle = '#fff';
+    roundRect(ctx, -12, -4, 24, 8, 4);
+    ctx.fill();
+    roundRect(ctx, -13, -7, 8, 9, 3);
+    ctx.fill();
+    roundRect(ctx, 5, -7, 8, 9, 3);
+    ctx.fill();
+    ctx.restore();
   }
 
   /* ---------- home screen ---------- */
@@ -418,6 +519,10 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       case 'lock':
         drawLock(now);
         break;
+      case 'ringing':
+        drawCall(now);
+        if (t > 26000) endCall(true, now);
+        break;
       case 'unlocking': {
         // the clock and the slider are gone the moment the slide completes; only
         // the wallpaper fades, while the home screen settles in from a touch larger
@@ -433,7 +538,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         drawLock(now, false);
         ctx.globalAlpha = 1;
         statusBar();
-        if (k >= 1) { st.knob = 0; if (st.alert) openThread(st.alert.thread, now); else setMode('home', now); }
+        if (k >= 1) { st.knob = 0; if (st.alert && st.alert.kind !== 'call') openThread(st.alert.thread, now); else { st.alert = null; setMode('home', now); } }
         break;
       }
       case 'home':
@@ -492,6 +597,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     st.dirty = true;
     Object.assign(ptr, { active: true, mode: null, x0: x, y0: y, t0: now, moved: false, lastY: y, lastT: now, vel: 0 });
     if (st.alert && (st.mode === 'home' || st.mode === 'app')) { ptr.mode = 'alert'; return true; }
+    if (st.mode === 'ringing') { ptr.active = false; return false; }
     if (st.mode === 'lock') {
       const kx = TRACK.x + KNOB.pad + st.knob * TRAVEL, ky = TRACK.y + KNOB.pad;
       if (x < kx - 8 || x > kx + KNOB.w + 8 || y < ky - 10 || y > ky + KNOB.h + 10) { ptr.active = false; return false; }
@@ -646,7 +752,10 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       st.dirty = true;
     },
     get buzzAt() { return st.buzzAt; },
+    get call() { return st.call; },
     dismiss() { st.alert = null; st.dirty = true; },
+    ring(i, now = performance.now()) { return ringCall(i, now); },
+    endCall(missed, now = performance.now()) { endCall(missed, now); },
     get alert() { return st.alert; },
     pointer: { down, move, up },
   };

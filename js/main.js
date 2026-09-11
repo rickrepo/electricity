@@ -2,9 +2,10 @@
 // desk, two 1200s with crates of records, the N64 under the CRT, a nitro
 // buggy on the rug with its transmitter. The phone on the desk boots when
 // you walk in. Click anywhere to walk up to the desk, click the phone to
-// pick it up, slide to unlock. Texts arrive while it sits there, and it
-// buzzes. Safari shows the other site for real, inside the screen. Click a
-// deck to start it; click the buggy to drive it around and off the ramps.
+// pick it up, slide to unlock. Texts arrive while it sits there and a call
+// comes in, and it buzzes; pick it up and the call is missed. Safari shows
+// the other site for real, inside the screen. Click a deck to start it;
+// click the buggy to drive it around and off the ramps.
 import * as THREE from '../vendor/three.min.js';
 import { OrbitControls, RoundedBoxGeometry } from '../vendor/three.min.js';
 import { createPhone, SPEC } from './phone.js';
@@ -248,7 +249,7 @@ async function main() {
     setHint('');
     document.body.classList.add('close', 'in-hand');
     screenClose(true);
-    flyTo(handPose(), state === 'room' ? 1600 : 950, () => { state = 'up'; setHint(); });
+    flyTo(handPose(), state === 'room' ? 1600 : 950, () => { state = 'up'; setHint(); if (os.mode === 'ringing') os.endCall(true); });
   };
   const putDown = () => {
     if (state !== 'up') return;
@@ -436,7 +437,8 @@ async function main() {
   document.addEventListener('visibilitychange', () => { paceHold = performance.now() + 2000; });
 
   /* ---------- loop ---------- */
-  const NUDGES = [[9000, 'Hey!', false], [26000, 'Pick up your phone', false], [75000, 'Did you finish the website? Open Safari and show me', true]];
+  const NUDGES = [[6000, 'Hey!', false], [62000, 'Pick up your phone', false], [100000, 'Did you finish the website? Open Safari and show me', true]];
+  const CALL_AT = 18000; // Mom rings while the phone is still on the desk
   const buzz = { seen: 0, start: 0, again: 0 };
   const screenWorld = new THREE.Vector3();
   let first = true;
@@ -484,7 +486,8 @@ async function main() {
     // shiver that shift, rock, and lift it. While the alert sits unread and the
     // phone is still on the desk, it buzzes again every twelve seconds.
     if (os.buzzAt !== buzz.seen) { buzz.seen = os.buzzAt; buzz.start = now; buzz.again = 0; }
-    if (os.alert && state !== 'up' && buzz.again < 4 && now - buzz.start > 12000) { buzz.start = now; buzz.again++; }
+    if (os.mode === 'ringing') { if (now - buzz.start > 1700) buzz.start = now; }
+    else if (os.alert && state !== 'up' && buzz.again < 4 && now - buzz.start > 12000) { buzz.start = now; buzz.again++; }
     const tb = now - buzz.start;
     if (buzz.start && tb < 1150) {
       const on = tb < 300 || (tb > 420 && tb < 720) || (tb > 840 && tb < 1140);
@@ -523,8 +526,9 @@ async function main() {
     if (first) {
       first = false;
       document.body.classList.add('ready');
-      // texts from Mom while the phone sits on the desk, to get you to pick it up
-      for (const [at, msg, always] of NUDGES) setTimeout(() => { if (os.mode === 'off' || os.mode === 'boot') return; if (always || os.mode === 'lock') os.receive(0, msg); }, at);
+      // texts from Mom while the phone sits on the desk, to get you to pick it up, and a call
+      for (const [at, msg, always] of NUDGES) setTimeout(() => { if (os.mode === 'off' || os.mode === 'boot' || os.mode === 'ringing') return; if (always || os.mode === 'lock') os.receive(0, msg); }, at);
+      setTimeout(() => { if (state !== 'up' && !move.active) os.ring(0); }, CALL_AT);
     }
   };
 
