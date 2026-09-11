@@ -1,11 +1,10 @@
 // Ricky's phone, 2007. You are standing in the den: the poster over the
-// desk, two 1200s with crates of records, the N64 under the CRT, a nitro
-// buggy on the rug with its transmitter. The phone on the desk boots when
-// you walk in. Click anywhere to walk up to the desk, click the phone to
-// pick it up, slide to unlock. Texts arrive while it sits there and a call
-// comes in, and it buzzes; pick it up and the call is missed. Safari shows
-// the other site for real, inside the screen. Click a deck to start it;
-// click the buggy to drive it around and off the ramps.
+// desk, two 1200s with crates of records, the N64 on its cabinet, a nitro
+// buggy on the rug and ramps to jump it. The phone on the desk is on. One
+// click anywhere puts it in your hand; slide to unlock. Texts arrive while
+// it sits there and a call comes in, and it buzzes; pick it up and the call
+// is missed. Safari shows the other site for real, inside the screen. Click
+// a deck to start it; click the buggy to drive it around and off the ramps.
 import * as THREE from '../vendor/three.min.js';
 import { OrbitControls, RoundedBoxGeometry } from '../vendor/three.min.js';
 import { createPhone, SPEC } from './phone.js';
@@ -121,7 +120,6 @@ async function main() {
   const phoneCenter = () => phone.group.localToWorld(new THREE.Vector3(0, 0, SPEC.depth / 2));
   const POSES = {
     room: { target: new THREE.Vector3(-100, 850, 250), distance: 2300, polar: 1.15, azimuth: 0.2, limits: { min: 700, max: 2300, polar: [0.55, 1.5], azimuth: [-0.75, 0.75] } },
-    desk: { get target() { return phoneCenter(); }, distance: 430, polar: 1.25, azimuth: 0.15, limits: { min: 240, max: 1500, polar: [0.35, 1.55], azimuth: [-1.05, 1.05] } },
   };
   const applyLimits = (pose) => {
     controls.minDistance = pose.limits.min;
@@ -133,13 +131,12 @@ async function main() {
   };
   const posePosition = (pose, azimuth = pose.azimuth, polar = pose.polar) => new THREE.Vector3().setFromSphericalCoords(pose.distance, polar, azimuth).add(pose.target);
 
-  let state = 'moving'; // room | desk | up | drive | moving
+  let state = 'moving'; // room | up | drive | moving
   let idleSince = performance.now();
   const look = new THREE.Vector3();
-  const saved = { pos: new THREE.Vector3(), target: new THREE.Vector3(), state: 'desk' };
+  const saved = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
   const move = { active: false, start: 0, dur: 0, from: null, to: null, onDone: null };
   const tmpQ = new THREE.Quaternion();
-  const sph = new THREE.Spherical();
 
   const flyTo = (to, dur, onDone) => {
     move.active = true;
@@ -162,25 +159,6 @@ async function main() {
     document.body.classList.toggle('close', poseKey !== 'room');
     setHint();
   };
-  // keep the viewer's angle when moving between the room and the desk
-  const currentAngles = () => { sph.setFromVector3(camera.position.clone().sub(look)); return sph; };
-  const walkUp = () => {
-    if (state !== 'room') return;
-    const a = currentAngles();
-    const pose = POSES.desk;
-    const target = pose.target;
-    state = 'moving';
-    setHint('');
-    flyTo({ pos: posePosition(pose, THREE.MathUtils.clamp(a.theta, -0.9, 0.9), THREE.MathUtils.clamp(a.phi, 0.6, 1.45)), target, up: WORLD_UP.clone() }, 1500, () => settle('desk'));
-  };
-  const stepBack = () => {
-    if (state !== 'desk') return;
-    const a = currentAngles();
-    const pose = POSES.room;
-    state = 'moving';
-    setHint('');
-    flyTo({ pos: posePosition(pose, THREE.MathUtils.clamp(a.theta, -0.8, 0.8), 1.15), target: pose.target.clone(), up: WORLD_UP.clone() }, 1400, () => settle('room'));
-  };
   /* ---------- the buggy: click it and drive ---------- */
   const keys = new Set();
   let joy = null;
@@ -190,7 +168,7 @@ async function main() {
     return { pos, target: c.group.position.clone().add(new THREE.Vector3(0, 90, 0)) };
   };
   const drive = () => {
-    if (state !== 'room' && state !== 'desk') return;
+    if (state !== 'room') return;
     state = 'moving';
     document.body.classList.add('close', 'driving');
     const p = chasePose();
@@ -218,13 +196,13 @@ async function main() {
     const center = phoneCenter();
     const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(tmpQ);
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(tmpQ);
-    const d = fitDistance(SPEC.width, SPEC.height, coarse ? 0.98 : 0.92);
+    const d = fitDistance(SPEC.width, SPEC.height, coarse ? 0.9 : 0.92);
     return { pos: center.clone().addScaledVector(normal, d), target: center, up };
   };
   // The screen is drawn at the scale that lands one canvas pixel on about one
   // device pixel when the phone is in hand: crisp, without a blur or a shimmer.
   const fitScale = () => {
-    const d = fitDistance(SPEC.width, SPEC.height, coarse ? 0.98 : 0.92);
+    const d = fitDistance(SPEC.width, SPEC.height, coarse ? 0.9 : 0.92);
     const px = (SPEC.screen.height / (2 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))) * innerHeight * renderer.getPixelRatio();
     return THREE.MathUtils.clamp(Math.ceil(px / os.height - 0.08), 2, 3);
   };
@@ -239,17 +217,17 @@ async function main() {
     t.minFilter = close ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
     t.needsUpdate = true;
   };
+  // one move: from wherever you stand in the room straight into your hand
   const pickUp = () => {
-    if (state !== 'room' && state !== 'desk') return;
+    if (state !== 'room') return;
     saved.pos.copy(camera.position);
     saved.target.copy(controls.target);
-    saved.state = state === 'room' ? 'desk' : state;
     look.copy(controls.target);
     state = 'moving';
     setHint('');
     document.body.classList.add('close', 'in-hand');
     screenClose(true);
-    flyTo(handPose(), state === 'room' ? 1600 : 950, () => { state = 'up'; setHint(); if (os.mode === 'ringing') os.endCall(true); });
+    flyTo(handPose(), 1500, () => { state = 'up'; setHint(); if (os.mode === 'ringing') os.endCall(true); });
   };
   const putDown = () => {
     if (state !== 'up') return;
@@ -257,10 +235,7 @@ async function main() {
     setHint('');
     document.body.classList.remove('in-hand');
     screenClose(false);
-    const back = saved.state === 'desk' && saved.pos.distanceTo(phoneCenter()) > 1500
-      ? { pos: posePosition(POSES.desk), target: POSES.desk.target, up: WORLD_UP.clone() }
-      : { pos: saved.pos.clone(), target: saved.target.clone(), up: WORLD_UP.clone() };
-    flyTo(back, 850, () => settle(saved.state));
+    flyTo({ pos: saved.pos.clone(), target: saved.target.clone(), up: WORLD_UP.clone() }, 1200, () => settle('room'));
   };
 
   /* ---------- the other site: a real browser view inside Safari while the phone is in hand ---------- */
@@ -374,12 +349,11 @@ async function main() {
     const button = buttonAt(e);
     if (button) return pressButton(button);
     if (state === 'up') { if (!screenPoint(e)) putDown(); return; }
-    if (hitsPhone(e) && (state === 'room' || state === 'desk')) return pickUp();
+    if (hitsPhone(e) && state === 'room') return pickUp();
     if (carAt(e)) return drive();
     const deck = deckAt(e);
     if (deck) return deck.action();
-    if (state === 'room') walkUp();
-    else if (state === 'desk') stepBack();
+    if (state === 'room') pickUp();
   };
   el.addEventListener('pointerup', endPointer);
   el.addEventListener('pointercancel', () => { if (screenGrab) { screenGrab = false; os.pointer.up(-1, -1); if (state !== 'up') controls.enabled = true; } if (joy) { joy = null; room.car.input(0, 0); } down = null; });
@@ -392,7 +366,7 @@ async function main() {
   const DRIVE_KEYS = { ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right' };
   addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === 'Escape') { if (state === 'up') putDown(); else if (state === 'desk') stepBack(); else if (state === 'drive') park(); }
+    if (e.key === 'Escape') { if (state === 'up') putDown(); else if (state === 'drive') park(); }
     if (state === 'drive') { if (DRIVE_KEYS[e.key]) { keys.add(DRIVE_KEYS[e.key]); e.preventDefault(); } return; }
     if (e.key === 'h' || e.key === 'H') pressButton('home');
     if (e.key === 's' || e.key === 'S') pressButton('sleep');
@@ -476,7 +450,7 @@ async function main() {
       camera.position.lerp(p.pos, k);
       look.lerp(p.target, k);
       camera.lookAt(look);
-    } else if (state === 'room' || state === 'desk') {
+    } else if (state === 'room') {
       if (state === 'room' && !controls.autoRotate && !reduced && !down && now - idleSince > 12000) controls.autoRotate = true;
       controls.update(dt);
       look.copy(controls.target);
@@ -553,7 +527,6 @@ async function main() {
   // shadow maps are drawn here, not on the first visit
   const views = [
     () => ({ pos: posePosition(POSES.room), target: POSES.room.target.clone(), up: WORLD_UP }),
-    () => ({ pos: posePosition(POSES.desk), target: POSES.desk.target, up: WORLD_UP }),
     () => handPose(),
     () => ({ ...chasePose(), up: WORLD_UP }),
   ];
@@ -581,7 +554,7 @@ async function main() {
   setTimeout(() => ui.loading?.remove(), 900);
   tick();
 
-  window.ricky = { scene, camera, controls, renderer, phone, os, room, pickUp, putDown, walkUp, stepBack, drive, park, pressButton, get state() { return state; } };
+  window.ricky = { scene, camera, controls, renderer, phone, os, room, pickUp, putDown, drive, park, pressButton, get state() { return state; } };
 }
 
 main().catch((err) => { console.error(err); ui.loading?.remove(); ui.fail.hidden = false; ui.fail.querySelector('p').textContent = `Something went wrong while drawing the room: ${err.message || err}`; });

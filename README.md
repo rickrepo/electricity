@@ -11,11 +11,11 @@ two crates of records in front of them, the N64 on a low cabinet with its
 controller on the rug, a nitro buggy on the floor and three plywood ramps to
 jump it off, another buggy on the shelf, the window with the curtains, a
 clock that keeps real time, a door, an architect's lamp on the desk. Click
-anywhere to walk up to the desk, click the phone to pick it up (the camera
-rolls to the phone's own up vector and fits it to your viewport), click the
-bezel or press Esc to put it down, click away to step back. Click a
-turntable to start and stop it. There are no buttons or words on the page:
-the room is the interface.
+anywhere and the phone comes straight into your hand (the camera rolls to
+the phone's own up vector and fits it to your viewport); click the bezel or
+press Esc to put it back and you are in the room again. Click a turntable
+to start and stop it. There are no buttons or words on the page: the room
+is the interface.
 
 While the phone sits on the desk, texts arrive: the phone rattles on its
 stand (and again every few seconds while the text sits unread), the screen
