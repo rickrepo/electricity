@@ -14,10 +14,10 @@ door, an architect's lamp on the desk. Click anywhere to pick the phone up
 again, and click a turntable to start and stop it. There are no buttons or
 words on the page: the room is the interface.
 
-A text or two arrive, the ordinary kind, from a number that is not in the
-contacts: the phone rattles (and again every few seconds while the text
-sits unread on the desk), the screen shows who and what, and the slider
-says "slide to view". Slide, and the thread opens. Over the home screen or
+A text or two arrive from the site itself, the way it notifies its owner
+(a letter sent to an MPP, follow-ups gone out): the phone rattles (and again
+every few seconds while the text sits unread on the desk), the screen shows
+who and what, and the slider says "slide to view". Slide, and the thread opens. Over the home screen or
 an app the text comes as a blue alert with Close and Reply. A call comes in too, the way the first iPhone showed
 one: the caller's picture fills the screen, the name sits in a dark band,
 the slider turns green and says "slide to answer", and the phone rings and
@@ -56,25 +56,27 @@ The phone runs software drawn in the manner of the first iPhone OS:
 
 - a lock screen with the clock and "slide to unlock" over the planet
   (Settings > Wallpaper swaps in ripples);
-- a home screen of fifteen glossy icons over a reflective dock: Messages,
-  Calendar, Photos, Camera, Stocks, Maps, Weather, Clock, Calculator, Notes,
-  Settings, and Phone, Mail, Safari, iPod;
+- a home screen of glossy icons in two pages you swipe between (Messages,
+  Calendar, Notes, Weather; then Clock, Stocks, Calculator, Settings), with
+  the page dots above a reflective dock that holds Phone, Mail and Safari;
+  the home button returns to the first page;
 - every app does something. Safari is a real browser for the pages listed in
   its code and nothing else (the address field takes no typing): a plain
-  portfolio page (a name, a line, the work, a footer) whose
-  autismwaitlist.com entry opens the actual site, shown in a frame laid over
-  the screen while the phone is in hand; the page is laid out at a desktop's width and
-  scaled down to fit, so it looks like a small copy of the site, the way the
-  first iPhone shrank pages to the screen, and the magnifier in the toolbar
-  steps it through desktop, tablet and phone widths. The toolbar's middle
-  button opens the current site in a tab of its own, for hosts that will not
-  show it in a frame. Two things can keep the frame blank: the site's own
-  headers may forbid being shown inside another page, and the claude.ai
-  preview of this room forbids frames to other sites entirely, so judge it on
-  your own hosting. Messages and Mail have threads and an inbox. Photos has a
-  camera roll and Camera adds to it (it looks at the room). Maps and Weather
-  are Toronto. Stocks charts, iPod plays, Calculator calculates, Phone dials,
-  Settings toggles airplane mode, brightness, and the wallpaper.
+  portfolio page (a name, twenty-odd years of websites and a site made for the
+  fun of AI, the work, a footer) whose autismwaitlist.com entry opens the
+  actual site, shown in a frame laid over the screen while the phone is in
+  hand; the page is laid out at a desktop's width and scaled down to fit, so
+  it looks like a small copy of the site, the way the first iPhone shrank
+  pages to the screen, and the magnifier in the toolbar steps it through
+  desktop, tablet and phone widths. The toolbar's middle button opens the
+  current site in a tab of its own, for hosts that will not show it in a
+  frame. Two things can keep the frame blank: the site's own headers may
+  forbid being shown inside another page, and the claude.ai preview of this
+  room forbids frames to other sites entirely, so judge it on your own
+  hosting. Messages holds the site's own notifications and Mail its inbox:
+  letters sent, follow-ups gone out, the domain renewed, a deploy. Weather is
+  Toronto. Stocks charts, Calculator calculates, Phone dials, Settings toggles
+  airplane mode, brightness, and the wallpaper.
 
 The personal things live in the room, not on the phone.
 
@@ -121,9 +123,9 @@ js/main.js          renderer, loading screen, camera moves (room, in hand), poin
 js/room.js          the den: materials, lights, furniture, decks, cabinet and N64
 js/phone.js         the phone (geometry and materials), SPEC has the measurements
 js/os/core.js       the software: boot, lock, home, app runtime (scrolling, nav bars)
-js/os/apps.js       the sixteen apps
+js/os/apps.js       the eleven apps
 js/os/icons.js      the home screen icons
-js/os/art.js        the planet, the ripples, the photos
+js/os/art.js        the planet, the ripples, the caller's picture
 js/os/ui.js         drawing helpers (bars, groups, toggles, bubbles)
 js/textures.js      the phone's surfaces
 vendor/three.min.js three.js + OrbitControls, RoundedBoxGeometry, RectAreaLight, bundled

@@ -423,8 +423,8 @@ async function main() {
   document.addEventListener('visibilitychange', () => { paceHold = performance.now() + 2000; });
 
   /* ---------- loop ---------- */
-  // a text or two, the ordinary kind; the second only if the phone is still locked
-  const NUDGES = [[6000, 'Hey!', true], [62000, 'You around?', false]];
+  // a text or two from the site itself; the second only if the phone is still locked
+  const NUDGES = [[6000, 'Letter generated and sent to an MPP.', true], [62000, 'Follow-up emails sent to provincial leaders.', false]];
   const CALL_AT = 18000; // a call comes in
   const buzz = { seen: 0, start: 0, again: 0 };
   const screenWorld = new THREE.Vector3();

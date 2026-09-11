@@ -27,12 +27,12 @@ const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); retur
 // opens the real site.
 const ABOUT = [
   ['header', 'Ricky', 'Work · About'],
-  ['intro', "Hi, I'm Ricky.", 'I make websites. Here is some of my work.'],
+  ['intro', "Hi, I'm Ricky.", "I've been working with websites for over twenty years. This one is just me enjoying the world of AI."],
   ['label', 'Work'],
   ['project', 'autismwaitlist.com', 'Advocacy for better care for children with autism in Ontario. The site generates letters and sends them to MPPs, then follows up automatically with provincial leaders, showing what constituents are asking for.', 'Visit the site'],
-  ['project', 'This phone', 'A first-generation iPhone in a den, drawn with three.js and canvas. You are holding it.'],
+  ['project', 'This phone', 'A first-generation iPhone in a den, built with AI from three.js primitives and canvas-drawn software. You are holding it.'],
   ['label', 'About'],
-  ['p', 'Everything here was made from scratch: the room, the phone, and the software running on it.'],
+  ['p', 'Over twenty years of building websites, and lately a lot of time enjoying what AI can build alongside me.'],
   ['footer', '© Ricky'],
 ];
 
@@ -224,10 +224,9 @@ const safari = {
 /* ================================================================== */
 /* Messages                                                            */
 /* ================================================================== */
+// the site's own notifications, the way it texts its owner
 const THREADS = [
-  { who: '555-0134', initials: '#', color: '#8a8f98', time: 'Yesterday', unread: 0, msgs: [[0, "Hey, it's me. New number."], [1, 'Got it.']] },
-  { who: 'Deck crew', initials: 'DC', color: '#3a7fdb', time: '11:05 AM', msgs: [[0, 'Bringing the 1200s Saturday?'], [1, 'Both. And the crate.'], [0, 'Bring the good needle this time'], [1, 'It was the good needle.']] },
-  { who: 'Record fair', initials: 'RF', color: '#e8842e', time: 'Yesterday', msgs: [[0, 'Doors at 8 on Saturday.'], [1, 'Bringing the crate.'], [0, 'Save you the box of 12-inch singles?'], [1, 'Please.']] },
+  { who: 'autismwaitlist.com', initials: 'AW', color: '#2f7fd6', time: 'Yesterday', unread: 0, msgs: [[0, 'Follow-up emails sent to provincial leaders.'], [0, 'Domain renewed for another year.']] },
 ];
 
 // Texts that arrive while the phone sits on the desk. The list and the thread
@@ -307,12 +306,13 @@ const messages = {
 /* ================================================================== */
 /* Mail                                                                */
 /* ================================================================== */
+// mail about the site: what it sent, what keeps it running
 const MAILS = [
-  { from: 'Hydro', subject: 'Your bill is ready', time: '3:12 PM', unread: true, body: 'Your statement for August is ready to view. Amount due: $61.40, by September 25.' },
-  { from: 'Record Fair', subject: 'Saturday, Hall B', time: '9:48 AM', unread: true, body: 'Doors at 8. Bring cash and a crate. Someone is selling a box of 12-inch singles from the eighties and we thought of you.' },
-  { from: 'Toronto Public Library', subject: 'Your hold is ready', time: 'Yesterday', body: 'The item you placed on hold is waiting at the desk. It will be held for seven days.' },
-  { from: 'N64 Parts Co.', subject: 'Controller sticks back in stock', time: 'Monday', body: 'The replacement sticks you asked about are in. Limit four per customer, which we assume is exactly your number.' },
-  { from: 'Ricky', subject: 'Note to self', time: 'Sunday', body: 'Fix the tonearm on the left deck. Then stop touching it.' },
+  { from: 'autismwaitlist.com', subject: 'Letter sent to an MPP', time: '3:12 PM', unread: true, body: 'A letter was generated and sent to an MPP on behalf of a constituent. The follow-up to provincial leaders is scheduled.' },
+  { from: 'autismwaitlist.com', subject: 'Follow-up emails sent', time: '9:48 AM', unread: true, body: 'The automated follow-up went out to provincial leaders, showing what constituents are asking for.' },
+  { from: 'Domain registrar', subject: 'autismwaitlist.com renewed', time: 'Yesterday', body: 'Your domain has been renewed for another year. Nothing to do.' },
+  { from: 'Hosting', subject: 'Deploy succeeded', time: 'Monday', body: 'autismwaitlist.com was deployed. All checks passed.' },
+  { from: 'Ricky', subject: 'Note to self', time: 'Sunday', body: 'Add the new letter template, then update the follow-up list.' },
 ];
 
 const mail = {
@@ -364,7 +364,7 @@ const mail = {
 /* ================================================================== */
 /* Calendar                                                            */
 /* ================================================================== */
-const EVENTS = [[0, 'Dentist · 10 AM'], [3, 'Deck night · 9 PM'], [6, 'Record fair · Hall B'], [12, 'New needle arrives (allegedly)']];
+const EVENTS = [[0, 'Deploy the site update'], [3, 'Review the letter template'], [6, 'Follow-up emails go out'], [12, 'Domain renewal']];
 
 const calendar = {
   id: 'calendar', name: 'Calendar', top: '#ffffff', bottom: '#e6e6e6',
@@ -415,174 +415,6 @@ const calendar = {
   tap(x, y, s) {
     if (inRect(s.hits?.prev, x, y)) s.offset--;
     else if (inRect(s.hits?.next, x, y)) s.offset++;
-  },
-};
-
-/* ================================================================== */
-/* Photos and Camera                                                   */
-/* ================================================================== */
-const PHOTO_KINDS = [['skyline', 'Home, at the right hour'], ['beach', 'The one good day in August'], ['cake', 'Year one'], ['mountains', 'Higher than it looks'], ['cassette', 'Summer 99, side A'], ['earth', 'Stock wallpaper'], ['night', 'Parking lot, 2 AM'], ['snow', 'First snow, no school']];
-
-const photos = {
-  id: 'photos', name: 'Photos', top: '#7cc0ff', bottom: '#2b6fd0',
-  init() { return { view: -1 }; },
-  bar(s, os) { return s.view < 0 ? { title: 'Camera Roll' } : { title: `${s.view + 1} of ${os.photos.length}`, back: 'Roll' }; },
-  back(s) { if (s.view < 0) return false; s.view = -1; s.scroll = 0; return true; },
-  height(s, os) { return s.view < 0 ? Math.ceil(os.photos.length / 4) * 79 + 4 : CONTENT_H; },
-  draw(ctx, s, os) {
-    if (s.view < 0) {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, W, 2000);
-      os.photos.forEach((p, i) => {
-        const x = 4 + (i % 4) * 79, y = 4 + Math.floor(i / 4) * 79;
-        const c = p.canvas, side = Math.min(c.width, c.height);
-        ctx.drawImage(c, (c.width - side) / 2, (c.height - side) / 2, side, side, x, y, 75, 75);
-      });
-      return;
-    }
-    const p = os.photos[s.view];
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, CONTENT_H);
-    const ph = CONTENT_H, pw = ph * (p.canvas.width / p.canvas.height);
-    ctx.drawImage(p.canvas, (W - pw) / 2, 0, pw, ph);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, CONTENT_H - 34, W, 34);
-    text(ctx, p.caption, W / 2, CONTENT_H - 13, { font: `14px ${FONT}`, color: '#fff', align: 'center' });
-  },
-  tap(x, y, s, os) {
-    if (s.view >= 0) { s.view = -1; return; }
-    const i = Math.floor((x - 4) / 79) + Math.floor((y - 4) / 79) * 4;
-    if (i >= 0 && i < os.photos.length) { s.view = i; s.scroll = 0; }
-  },
-};
-
-// The living room the camera looks at. Drawn into any context.
-function cameraScene(ctx, now, x0 = 0, y0 = 0, w = W, h = H - 64) {
-  ctx.save();
-  ctx.translate(x0, y0);
-  const wall = ctx.createLinearGradient(0, 0, 0, h * 0.7);
-  wall.addColorStop(0, '#e6dfd0'); wall.addColorStop(1, '#cfc4ae');
-  ctx.fillStyle = wall;
-  ctx.fillRect(0, 0, w, h * 0.7);
-  ctx.fillStyle = '#7a5a3c';
-  ctx.fillRect(0, h * 0.7, w, h * 0.3);
-  ctx.fillStyle = 'rgba(0,0,0,0.12)';
-  for (let y = h * 0.7; y < h; y += 14) ctx.fillRect(0, y, w, 1);
-  // the cabinet with the console on top
-  ctx.fillStyle = '#5a4a3c';
-  ctx.fillRect(170, 196, 120, 94);
-  ctx.fillStyle = '#4a3c30';
-  ctx.fillRect(170, 196, 120, 6);
-  ctx.fillStyle = '#44403c';
-  roundRect(ctx, 176, 174, 108, 22, 6); ctx.fill();
-  ctx.fillStyle = '#2b2825';
-  ctx.fillRect(206, 174, 48, 6);
-  ctx.fillStyle = '#d63a2f';
-  ctx.beginPath(); ctx.arc(186, 188, 2.5, 0, Math.PI * 2); ctx.fill();
-  n64Controller(ctx, 232, 316, 70);
-  ctx.restore();
-}
-
-const camera = {
-  id: 'camera', name: 'Camera', top: '#aab1bb', bottom: '#4d545f',
-  fixed: true,
-  init() { return { flashAt: 0, last: null }; },
-  animating() { return true; },
-  draw(ctx, s, os, now) {
-    cameraScene(ctx, now, 0, 20, W, H - 64);
-    if (s.flashAt) {
-      const a = 1 - Math.min(1, (now - s.flashAt) / 260);
-      if (a > 0) { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(0, 20, W, H - 64); }
-      else s.flashAt = 0;
-    }
-    const y = H - 44;
-    const g = ctx.createLinearGradient(0, y, 0, H);
-    g.addColorStop(0, '#5a5a5c'); g.addColorStop(1, '#1c1c1e');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, y, W, 44);
-    if (s.last) { ctx.drawImage(s.last, 0, 0, s.last.width, s.last.height, 8, y + 6, 32, 32); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(8.5, y + 6.5, 32, 32); }
-    const bg = ctx.createLinearGradient(0, y + 6, 0, y + 38);
-    bg.addColorStop(0, '#f2f2f4'); bg.addColorStop(1, '#a9adb3');
-    ctx.fillStyle = bg;
-    roundRect(ctx, W / 2 - 40, y + 6, 80, 32, 7);
-    ctx.fill();
-    ctx.strokeStyle = '#111';
-    ctx.stroke();
-    ctx.fillStyle = '#222';
-    roundRect(ctx, W / 2 - 12, y + 15, 24, 14, 3); ctx.fill();
-    ctx.fillStyle = '#e9ebee';
-    ctx.beginPath(); ctx.arc(W / 2, y + 22, 4.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#222';
-    ctx.beginPath(); ctx.arc(W / 2, y + 22, 2.5, 0, Math.PI * 2); ctx.fill();
-    s.hits = { shutter: { x: W / 2 - 48, y: y, w: 96, h: 44 } };
-  },
-  tap(x, y, s, os, now) {
-    if (!inRect(s.hits?.shutter, x, y) || s.flashAt) return;
-    s.flashAt = now;
-    const c = document.createElement('canvas');
-    c.width = 640; c.height = 832;
-    const cctx = c.getContext('2d');
-    cctx.scale(2, 2);
-    cameraScene(cctx, now, 0, 0, W, H - 64);
-    s.last = c;
-    os.addPhoto(c, 'Living room, just now');
-  },
-};
-
-/* ================================================================== */
-/* Maps                                                                */
-/* ================================================================== */
-const maps = {
-  id: 'maps', name: 'Maps', top: '#f6f0dc', bottom: '#dcd2b3',
-  animating() { return true; },
-  bar() { return { title: 'Maps' }; },
-  height() { return CONTENT_H; },
-  draw(ctx, s, os, now) {
-    ctx.fillStyle = '#e9e2cf';
-    ctx.fillRect(0, 0, W, CONTENT_H);
-    ctx.fillStyle = '#b9d7a0';
-    ctx.beginPath(); ctx.moveTo(190, 40); ctx.lineTo(320, 20); ctx.lineTo(320, 150); ctx.lineTo(220, 160); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#9ecbe6';
-    ctx.beginPath(); ctx.moveTo(0, 300); ctx.quadraticCurveTo(120, 250, 200, 330); ctx.quadraticCurveTo(280, 400, 320, 380); ctx.lineTo(320, CONTENT_H); ctx.lineTo(0, CONTENT_H); ctx.closePath(); ctx.fill();
-    const road = (pts, w, color = '#fff') => {
-      ctx.strokeStyle = '#c9c2ad'; ctx.lineWidth = w + 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) ctx.lineTo(p[0], p[1]); ctx.stroke();
-      ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke();
-    };
-    road([[0, 120], [320, 100]], 10, '#f5d76e');
-    road([[60, 0], [70, 260]], 9);
-    road([[150, 0], [160, 250]], 9);
-    road([[240, 0], [250, 200]], 8);
-    road([[0, 210], [320, 190]], 8);
-    road([[0, 60], [200, 50]], 6);
-    const label = (t, x, y, a = 0) => { ctx.save(); ctx.translate(x, y); ctx.rotate(a); text(ctx, t, 0, 0, { font: `bold 9px ${FONT}`, color: '#6b6560', align: 'center', baseline: 'middle' }); ctx.restore(); };
-    label('QUEEN ST W', 110, 112, -0.06);
-    label('BATHURST ST', 65, 160, 1.53);
-    label('KING ST W', 200, 200, -0.06);
-    label('THE PARK', 262, 90);
-    label('LAKE ONTARIO', 100, 330, -0.35);
-    // the tower on the shore
-    ctx.fillStyle = '#7d8590';
-    ctx.fillRect(268, 262, 3, 40);
-    ctx.beginPath(); ctx.ellipse(269.5, 276, 9, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillRect(266, 282, 7, 3);
-    ctx.fillRect(268.5, 250, 2, 12);
-    const pin = (x, y, t) => {
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(x, y + 2, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#e03a2f'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 8, y - 16); ctx.arc(x, y - 20, 9, Math.PI * 0.85, Math.PI * 2.15); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y - 20, 3.5, 0, Math.PI * 2); ctx.fill();
-      ctx.font = `bold 12px ${FONT}`;
-      const w = ctx.measureText(t).width + 16;
-      ctx.fillStyle = '#fff'; roundRect(ctx, x - w / 2, y - 52, w, 22, 5); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.stroke();
-      text(ctx, t, x, y - 41, { font: `bold 12px ${FONT}`, align: 'center', baseline: 'middle' });
-    };
-    pin(112, 190, "Ricky's place");
-    pin(236, 236, 'Toronto');
-    const pulse = (now / 1400) % 1;
-    ctx.fillStyle = `rgba(58,127,219,${0.35 * (1 - pulse)})`;
-    ctx.beginPath(); ctx.arc(150, 240, 8 + pulse * 22, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(150, 240, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#3a7fdb'; ctx.beginPath(); ctx.arc(150, 240, 5.5, 0, Math.PI * 2); ctx.fill();
   },
 };
 
@@ -747,7 +579,7 @@ const calculator = {
 /* ================================================================== */
 /* Notes                                                               */
 /* ================================================================== */
-const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. fix the left deck tonearm', '4. return the library book (1998)', '5. sort the crate'];
+const NOTE = ['To do', '1. build the phone  ✓', '2. write the software  ✓', '3. new letter template', '4. update the follow-up list', '5. renew the domain  ✓'];
 
 const notes = {
   id: 'notes', name: 'Notes', top: '#fff0a0', bottom: '#f3c53c',
@@ -780,7 +612,7 @@ const settings = {
     const st = os.settings;
     s.hits = {};
     if (s.view === 'about') {
-      const rows = [['Model', 'R1'], ['Software', '1.0 (2026)'], ['Storage', '8 GB, mostly records'], ['Photos', String(os.photos.length)], ['Serial', 'RCKY-2007-0001'], ['Wallpaper', st.wallpaper === 'ripples' ? 'Ripples' : 'The planet']];
+      const rows = [['Model', 'R1'], ['Software', '1.0 (2026)'], ['Storage', '8 GB'], ['Serial', 'RCKY-2007-0001'], ['Wallpaper', st.wallpaper === 'ripples' ? 'Ripples' : 'The planet']];
       group(ctx, 10, 12, W - 20, rows.length * 44);
       rows.forEach(([k, v], i) => {
         const y = 12 + i * 44;
@@ -968,98 +800,8 @@ const stocks = {
   },
 };
 
-/* ================================================================== */
-/* Music, the way the iPod app did it                                  */
-/* ================================================================== */
-const SONGS = [['Summer of 89', 'The Cassettes', 214, '#c8322b'], ['Dial Tone', 'Modem Kids', 187, '#3a7fdb'], ['Late Bus Home', 'Paper Route', 241, '#f2a33a'], ['Parking Lot Lights', 'The Cassettes', 198, '#3aa64a'], ['Static on Channel 3', 'Modem Kids', 176, '#7a4fb3'], ['Cul-de-sac', 'Paper Route', 223, '#5aa0e6']];
-const MUSIC_TABS = ['Playlists', 'Artists', 'Songs', 'Videos', 'More'];
-const music = {
-  id: 'music', name: 'iPod', top: '#ffbf5c', bottom: '#e35f16', glyph: 'music',
-  inset: 44,
-  init() { return { tab: 2, playing: -1, startedAt: 0, paused: false, pausedAt: 0, view: 'list' }; },
-  animating(s) { return s.view === 'now' && s.playing >= 0 && !s.paused; },
-  bar(s) { return s.view === 'now' ? { title: 'Now Playing', back: 'Songs' } : { title: MUSIC_TABS[s.tab] }; },
-  back(s) { if (s.view !== 'now') return false; s.view = 'list'; return true; },
-  height(s) { return s.view === 'now' ? CONTENT_H - 44 : Math.max(CONTENT_H, SONGS.length * 44); },
-  draw(ctx, s, os, now) {
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, W, 800);
-    if (s.view === 'now' && s.playing >= 0) {
-      const [title, artist, total, color] = SONGS[s.playing];
-      const elapsed = Math.min(total, ((s.paused ? s.pausedAt : now) - s.startedAt) / 1000);
-      ctx.fillStyle = '#111';
-      ctx.fillRect(0, 0, W, CONTENT_H);
-      const g = ctx.createLinearGradient(50, 20, 270, 240);
-      g.addColorStop(0, color); g.addColorStop(1, '#222');
-      ctx.fillStyle = g;
-      ctx.fillRect(50, 16, 220, 220);
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      ctx.beginPath(); ctx.arc(160, 126, 70, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath(); ctx.arc(160, 126, 14, 0, Math.PI * 2); ctx.fill();
-      text(ctx, title, W / 2, 268, { font: `bold 18px ${FONT}`, color: '#fff', align: 'center' });
-      text(ctx, artist, W / 2, 290, { font: `14px ${FONT}`, color: '#aaa', align: 'center' });
-      ctx.fillStyle = '#333';
-      roundRect(ctx, 30, 310, W - 60, 6, 3); ctx.fill();
-      ctx.fillStyle = '#e9ecf1';
-      roundRect(ctx, 30, 310, (W - 60) * (elapsed / total), 6, 3); ctx.fill();
-      const mm = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
-      text(ctx, mm(elapsed), 30, 334, { font: `12px ${FONT}`, color: '#bbb' });
-      text(ctx, `-${mm(total - elapsed)}`, W - 30, 334, { font: `12px ${FONT}`, color: '#bbb', align: 'right' });
-      ctx.fillStyle = '#e9ecf1';
-      ctx.beginPath(); ctx.moveTo(96, 358); ctx.lineTo(96, 382); ctx.lineTo(82, 370); ctx.closePath(); ctx.fill(); ctx.fillRect(78, 358, 3, 24);
-      ctx.beginPath(); ctx.moveTo(224, 358); ctx.lineTo(224, 382); ctx.lineTo(238, 370); ctx.closePath(); ctx.fill(); ctx.fillRect(239, 358, 3, 24);
-      if (s.paused || elapsed >= total) { ctx.beginPath(); ctx.moveTo(150, 354); ctx.lineTo(176, 370); ctx.lineTo(150, 386); ctx.closePath(); ctx.fill(); }
-      else { ctx.fillRect(148, 354, 9, 32); ctx.fillRect(163, 354, 9, 32); }
-      s.hits = { play: { x: 120, y: 340, w: 80, h: 60 }, prev: { x: 60, y: 340, w: 56, h: 60 }, next: { x: 204, y: 340, w: 56, h: 60 } };
-      return;
-    }
-    if (s.tab !== 2) {
-      const names = s.tab === 0 ? ['On-The-Go', 'Late bus', 'Loud, on time'] : s.tab === 1 ? ['Modem Kids', 'Paper Route', 'The Cassettes'] : s.tab === 3 ? ['Nothing downloaded yet'] : ['Albums', 'Compilations', 'Genres', 'Composers'];
-      names.forEach((n, i) => { const y = i * 44; text(ctx, n, 16, y + 28, { font: `bold 16px ${FONT}` }); chevron(ctx, W - 14, y + 22); separator(ctx, 16, y + 43, W - 16); });
-      return;
-    }
-    SONGS.forEach(([title, artist], i) => {
-      const y = i * 44;
-      if (s.playing === i) { ctx.fillStyle = '#e8f0fb'; ctx.fillRect(0, y, W, 44); }
-      text(ctx, title, 16, y + 20, { font: `bold 15px ${FONT}` });
-      text(ctx, artist, 16, y + 37, { font: `12px ${FONT}`, color: '#6b6f78' });
-      if (s.playing === i) { ctx.fillStyle = '#3a7fdb'; for (let k = 0; k < 3; k++) ctx.fillRect(W - 40 + k * 7, y + 26 - (4 + ((Math.floor(now / 160) + k) % 3) * 4), 4, 4 + ((Math.floor(now / 160) + k) % 3) * 4); }
-      separator(ctx, 16, y + 43, W - 16);
-    });
-  },
-  overlay(ctx, s) {
-    const y = H - 44;
-    const g = ctx.createLinearGradient(0, y, 0, H);
-    g.addColorStop(0, '#3a3a3c'); g.addColorStop(1, '#151516');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, y, W, 44);
-    MUSIC_TABS.forEach((t, i) => {
-      const x = (i + 0.5) * (W / 5);
-      if (s.tab === i) { ctx.fillStyle = 'rgba(255,255,255,0.15)'; roundRect(ctx, x - 30, y + 3, 60, 38, 4); ctx.fill(); }
-      ctx.fillStyle = s.tab === i ? '#3a7fdb' : '#9a9a9e';
-      ctx.beginPath(); ctx.arc(x, y + 16, 7, 0, Math.PI * 2); ctx.fill();
-      text(ctx, t, x, y + 37, { font: `bold 9px ${FONT}`, color: s.tab === i ? '#fff' : '#9a9a9e', align: 'center' });
-    });
-    s.tabHits = { y };
-  },
-  tap(x, y, s, os, now) {
-    if (s.view === 'now') {
-      if (inRect(s.hits?.play, x, y)) { if (s.paused) { s.startedAt += now - s.pausedAt; s.paused = false; } else { s.paused = true; s.pausedAt = now; } }
-      else if (inRect(s.hits?.next, x, y)) { s.playing = (s.playing + 1) % SONGS.length; s.startedAt = now; s.paused = false; }
-      else if (inRect(s.hits?.prev, x, y)) { s.playing = (s.playing + SONGS.length - 1) % SONGS.length; s.startedAt = now; s.paused = false; }
-      return;
-    }
-    if (s.tab !== 2) return;
-    const i = Math.floor(y / 44);
-    if (i >= 0 && i < SONGS.length) { s.playing = i; s.startedAt = now; s.paused = false; s.view = 'now'; s.scroll = 0; }
-  },
-  barTap() {},
-};
-// the tab bar sits outside the scroll area, so taps on it arrive through the "bar" path of the core
-music.tabTap = (x, y, s) => { if (y >= H - 44) { s.tab = Math.floor(x / (W / 5)); s.view = 'list'; s.scroll = 0; return true; } return false; };
-
-export const APPS = [messages, calendar, photos, camera, stocks, maps, weather, clock, calculator, notes, settings];
-export const DOCK = [phone, mail, safari, music];
+// the home screen: pages of icons you swipe between, four to a row, over a dock that stays put
+export const HOME_PAGES = [[messages, calendar, notes, weather], [clock, stocks, calculator, settings]];
+export const APPS = HOME_PAGES.flat();
+export const DOCK = [phone, mail, safari];
 export const ALL = [...APPS, ...DOCK];
-export { PHOTO_KINDS };

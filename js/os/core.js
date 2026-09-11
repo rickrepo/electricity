@@ -5,7 +5,7 @@
 // sleep. The canvas is redrawn only when something on it changes.
 import { W, H, STATUS_H, CONTENT_Y, FONT, clamp, roundRect, navBar, pinstripes, inRect, clockText, wrapLines } from './ui.js';
 import { ICON, renderAtlas } from './icons.js';
-import { APPS, DOCK, ALL, PHOTO_KINDS, inbox, calls } from './apps.js';
+import { APPS, DOCK, ALL, HOME_PAGES, inbox, calls } from './apps.js';
 import { earthWallpaper, rippleWallpaper, makePhoto } from './art.js';
 
 let S = 2;
@@ -30,8 +30,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   const measure = document.createElement('canvas').getContext('2d');
   const wallpapers = { earth: earthWallpaper(), ripples: rippleWallpaper() };
   const settings = { wallpaper: 'earth', brightness: 1, airplane: false };
-  const photos = PHOTO_KINDS.map(([kind, caption]) => ({ canvas: makePhoto(kind), caption }));
-  let atlas = null, atlasMinute = -1, home = null;
+  let atlas = null, atlasMinute = -1, home = null, dockCache = null;
   let callPhoto = null; // the caller's picture, drawn on first ring
 
   const st = {
@@ -39,9 +38,10 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     knob: 0, releaseAt: 0, releaseFrom: 0,
     app: null, appRect: null, pressed: null, states: {},
     alert: null, buzzAt: 0, call: null,
+    page: 0, pageX: 0, pageAnim: null, // the home screen's page, its drag offset, and the settle animation
     listeners: new Set(),
   };
-  const ptr = { active: false, mode: null, x0: 0, y0: 0, t0: 0, moved: false, lastY: 0, lastT: 0, vel: 0 };
+  const ptr = { active: false, mode: null, x0: 0, y0: 0, t0: 0, moved: false, lastY: 0, lastT: 0, vel: 0, lastX: 0, vx: 0 };
   const setMode = (mode, now) => { st.mode = mode; st.since = now; st.dirty = true; for (const fn of st.listeners) fn(mode); };
 
   // a call comes in on the lock screen and rings until it is answered, missed, or gives up
@@ -70,13 +70,15 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     st.since = now;
   };
   const os = {
-    settings, photos, measure,
-    addPhoto(c, caption) { photos.unshift({ canvas: c, caption }); st.dirty = true; },
+    settings, measure,
     open(id, setup) {
       const app = ALL.find((a) => a.id === id);
       if (!app) return;
       st.app = app;
-      st.appRect = iconRect(ALL.indexOf(app));
+      const idx = ALL.indexOf(app);
+    const p = pageOf(idx);
+    if (p >= 0) { st.page = p; st.pageX = 0; st.pageAnim = null; }
+    st.appRect = iconRect(idx);
       const s = appState(app);
       s.scroll = 0;
       setup?.(app, s);
@@ -318,8 +320,17 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   }
 
   /* ---------- home screen ---------- */
-  // the grid holds APPS, four to a row; the dock holds DOCK
-  const iconRect = (i) => (i < APPS.length ? { x: COLS[i % 4], y: ROWS[Math.floor(i / 4)] } : { x: COLS[i - APPS.length], y: DOCK_ICON_Y });
+  // The grid is HOME_PAGES, four to a row on each page, laid side by side and
+  // swiped between; the dock holds DOCK and stays put. Icon positions are in
+  // screen coordinates, so a page that is not showing lands off the screen.
+  const PAGES_N = HOME_PAGES.length;
+  const dockGap = (W - DOCK.length * ICON) / (DOCK.length + 1);
+  const pageOf = (i) => (i < APPS.length ? HOME_PAGES.findIndex((p) => p.includes(APPS[i])) : -1);
+  const iconRect = (i) => {
+    if (i >= APPS.length) return { x: Math.round(dockGap + (i - APPS.length) * (ICON + dockGap)), y: DOCK_ICON_Y };
+    const p = pageOf(i), j = HOME_PAGES[p].indexOf(APPS[i]);
+    return { x: COLS[j % 4] + (p - st.page) * W + st.pageX, y: ROWS[Math.floor(j / 4)] };
+  };
   const iconAt = (x, y) => {
     for (let i = 0; i < ALL.length; i++) {
       const r = iconRect(i);
@@ -327,50 +338,77 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     }
     return -1;
   };
-  // The home screen only changes by the minute (the clock icon), so it is
-  // drawn once into a cache and blitted; the pressed icon and the status bar
-  // are the only things drawn per frame.
+  // the home screen settles on a page: from the current offset to page `p`, over 280 ms
+  const settlePage = (p, now) => {
+    const offset = st.page * W - st.pageX;
+    st.page = p;
+    st.pageX = p * W - offset;
+    st.pageAnim = st.pageX ? { from: st.pageX, start: now } : null;
+    st.dirty = true;
+  };
+  // The pages only change by the minute (the clock icon), so they are drawn
+  // once into a cache, all side by side, and blitted at the page offset; the
+  // dock is a second cache. The pressed icon, the badges, the page dots and
+  // the status bar are the only things drawn per frame.
   function renderHome() {
     if (!home) home = document.createElement('canvas');
-    home.width = W * S;
-    home.height = H * S;
+    if (!dockCache) dockCache = document.createElement('canvas');
+    home.width = W * PAGES_N * S;
+    home.height = DOCK_Y * S;
     const c = home.getContext('2d');
     c.setTransform(S, 0, 0, S, 0, 0);
     c.fillStyle = '#000';
-    c.fillRect(0, 0, W, H);
+    c.fillRect(0, 0, W * PAGES_N, DOCK_Y);
     c.font = `bold 11px ${FONT}`;
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
-    const dg = c.createLinearGradient(0, DOCK_Y, 0, H);
+    HOME_PAGES.forEach((page, p) => page.forEach((app, j) => {
+      const i = ALL.indexOf(app);
+      const x = p * W + COLS[j % 4], y = ROWS[Math.floor(j / 4)];
+      c.drawImage(atlas.canvas, i * (atlas.cell + atlas.pad), 0, atlas.cell, atlas.cell, x, y, ICON, ICON);
+      c.fillStyle = '#fff';
+      c.shadowColor = 'rgba(0,0,0,0.8)';
+      c.shadowBlur = 2;
+      c.shadowOffsetY = 1;
+      c.fillText(app.name, x + ICON / 2, y + ICON + 13);
+      c.shadowColor = 'transparent';
+    }));
+    dockCache.width = W * S;
+    dockCache.height = (H - DOCK_Y) * S;
+    const d = dockCache.getContext('2d');
+    d.setTransform(S, 0, 0, S, 0, -DOCK_Y * S);
+    const dg = d.createLinearGradient(0, DOCK_Y, 0, H);
     dg.addColorStop(0, '#6a6a6c');
     dg.addColorStop(0.08, '#4a4a4c');
     dg.addColorStop(1, '#151516');
-    c.fillStyle = dg;
-    c.fillRect(0, DOCK_Y, W, H - DOCK_Y);
-    c.fillStyle = 'rgba(255,255,255,0.35)';
-    c.fillRect(0, DOCK_Y, W, 1);
-    ALL.forEach((app, i) => {
-      const r = iconRect(i);
-      const sx = i * (atlas.cell + atlas.pad);
-      c.drawImage(atlas.canvas, sx, 0, atlas.cell, atlas.cell, r.x, r.y, ICON, ICON);
-      if (i < APPS.length) {
-        c.fillStyle = '#fff';
-        c.shadowColor = 'rgba(0,0,0,0.8)';
-        c.shadowBlur = 2;
-        c.shadowOffsetY = 1;
-        c.fillText(app.name, r.x + ICON / 2, r.y + ICON + 13);
-        c.shadowColor = 'transparent';
-      } else {
-        c.drawImage(atlas.canvas, sx, atlas.cell + atlas.pad, atlas.cell, atlas.cell, r.x, r.y + ICON + 1, ICON, ICON);
-      }
+    d.fillStyle = dg;
+    d.fillRect(0, DOCK_Y, W, H - DOCK_Y);
+    d.fillStyle = 'rgba(255,255,255,0.35)';
+    d.fillRect(0, DOCK_Y, W, 1);
+    DOCK.forEach((app, k) => {
+      const i = APPS.length + k, r = iconRect(i), sx = i * (atlas.cell + atlas.pad);
+      d.drawImage(atlas.canvas, sx, 0, atlas.cell, atlas.cell, r.x, r.y, ICON, ICON);
+      d.drawImage(atlas.canvas, sx, atlas.cell + atlas.pad, atlas.cell, atlas.cell, r.x, r.y + ICON + 1, ICON, ICON);
     });
-    c.fillStyle = 'rgba(255,255,255,0.9)';
-    c.beginPath(); c.arc(W / 2, 378, 2.5, 0, Math.PI * 2); c.fill();
   }
-  function drawHome() {
+  function drawHome(now = performance.now()) {
     const minute = Math.floor(Date.now() / 60000);
     if (!atlas || minute !== atlasMinute) { atlas = renderAtlas(ALL, Date.now(), S); atlasMinute = minute; renderHome(); }
-    ctx.drawImage(home, 0, 0, W, H);
+    if (st.pageAnim) {
+      const t = Math.min(1, (now - st.pageAnim.start) / 280);
+      st.pageX = st.pageAnim.from * (1 - easeOut(t));
+      if (t >= 1) { st.pageAnim = null; st.pageX = 0; }
+    }
+    const offset = st.page * W - st.pageX;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(home, 0, 0, home.width, home.height, -offset, 0, W * PAGES_N, DOCK_Y);
+    ctx.drawImage(dockCache, 0, 0, dockCache.width, dockCache.height, 0, DOCK_Y, W, H - DOCK_Y);
+    // one dot per page above the dock, the current one bright
+    for (let p = 0; p < PAGES_N; p++) {
+      ctx.fillStyle = p === st.page ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.arc(W / 2 + (p - (PAGES_N - 1) / 2) * 12, 378, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
     if (st.pressed !== null && st.pressed >= 0) {
       const r = iconRect(st.pressed);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -382,6 +420,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       const n = app.badge?.() || 0;
       if (!n) return;
       const r = iconRect(i);
+      if (r.x < -ICON || r.x > W) return;
       const bx = r.x + ICON - 4, by = r.y + 4;
       ctx.fillStyle = '#e0301e';
       ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill();
@@ -497,7 +536,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     ctx.restore();
   }
   // the home screen zooming in or out around the icon that opened
-  function drawHomeZoom(rect, k) {
+  function drawHomeZoom(rect, k, now) {
     const cx = rect.x + ICON / 2, cy = rect.y + ICON / 2;
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
@@ -506,7 +545,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     ctx.translate(cx, cy);
     ctx.scale(1 + 0.35 * k, 1 + 0.35 * k);
     ctx.translate(-cx, -cy);
-    drawHome();
+    drawHome(now);
     ctx.restore();
   }
 
@@ -546,7 +585,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         ctx.translate(W / 2, H / 2);
         ctx.scale(z, z);
         ctx.translate(-W / 2, -H / 2);
-        drawHome();
+        drawHome(now);
         ctx.restore();
         ctx.globalAlpha = 1 - k;
         drawLock(now, false);
@@ -556,11 +595,11 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         break;
       }
       case 'home':
-        drawHome();
+        drawHome(now);
         break;
       case 'opening': {
         const k = easeOut(clamp(t / 340, 0, 1));
-        drawHomeZoom(st.appRect, k);
+        drawHomeZoom(st.appRect, k, now);
         drawAppZoom(now, st.app, st.appRect, k, clamp(k / 0.25, 0, 1));
         statusBar();
         if (k >= 1) setMode('app', now);
@@ -571,14 +610,14 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
         break;
       case 'closing': {
         const k = 1 - easeInOut(clamp(t / 300, 0, 1));
-        drawHomeZoom(st.appRect, k);
+        drawHomeZoom(st.appRect, k, now);
         drawAppZoom(now, st.app, st.appRect, k, clamp(k / 0.3, 0, 1));
         statusBar();
         if (k <= 0) { st.app = null; setMode('home', now); }
         break;
       }
       case 'sleeping': {
-        if (st.app) drawApp(now, st.app); else if (st.wasHome) drawHome(); else drawLock(now);
+        if (st.app) drawApp(now, st.app); else if (st.wasHome) drawHome(now); else drawLock(now);
         ctx.fillStyle = `rgba(0,0,0,${clamp(t / 180, 0, 1)})`;
         ctx.fillRect(0, 0, W, H);
         if (t >= 180) { st.app = null; st.wasHome = false; st.knob = 0; setMode('off', now); }
@@ -597,7 +636,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
 
   const animating = (now) => {
     if (!['off', 'home', 'app'].includes(st.mode)) return true; // boot, lock (its shimmer), transitions
-    if (ptr.active || st.releaseAt > 0) return true;
+    if (ptr.active || st.releaseAt > 0 || st.pageAnim) return true;
     if (st.mode === 'app' && st.app) {
       const s = appState(st.app);
       if (Math.abs(s.vel) > 0.05) return true;
@@ -620,11 +659,14 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       return true;
     }
     if (st.mode === 'home') {
+      // an icon, or empty space above the dock, which is where a swipe between pages starts
       const i = iconAt(x, y);
       st.pressed = i >= 0 ? i : null;
       ptr.mode = 'icon';
-      if (i < 0) ptr.active = false;
-      return i >= 0;
+      ptr.lastX = x;
+      st.pageAnim = null;
+      if (i < 0 && y >= DOCK_Y) { ptr.active = false; return false; }
+      return true;
     }
     if (st.mode === 'app' && st.app) {
       const app = st.app, s = appState(app);
@@ -646,6 +688,16 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     st.dirty = true;
     if (ptr.mode === 'knob' || ptr.mode === 'answer') { st.knob = clamp((x - ptr.grab - TRACK.x - KNOB.pad) / TRAVEL, 0, 1); return; }
     if (!ptr.moved && Math.hypot(x - ptr.x0, y - ptr.y0) > 8) ptr.moved = true;
+    // on the home screen a sideways drag becomes a swipe between pages, with resistance past the ends
+    if (st.mode === 'home' && ptr.mode === 'icon' && ptr.moved && Math.abs(x - ptr.x0) > Math.abs(y - ptr.y0)) { ptr.mode = 'swipe'; st.pressed = null; }
+    if (ptr.mode === 'swipe') {
+      let dx = x - ptr.x0;
+      if ((st.page === 0 && dx > 0) || (st.page === PAGES_N - 1 && dx < 0)) dx *= 0.3;
+      st.pageX = dx;
+      ptr.vx = (x - ptr.lastX) / Math.max(1, now - ptr.lastT);
+      ptr.lastX = x; ptr.lastT = now;
+      return;
+    }
     if (st.mode !== 'app' || !st.app) return;
     const app = st.app, s = appState(app);
     if (ptr.mode === 'drag') {
@@ -691,6 +743,14 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
       if (tap && i !== null && iconAt(x, y) === i) { st.app = ALL[i]; st.appRect = iconRect(i); setMode('opening', now); }
       return;
     }
+    if (ptr.mode === 'swipe') {
+      // past a third of the width, or a flick, turns the page
+      let p = st.page;
+      if (st.pageX < -W / 3 || (st.pageX < -16 && ptr.vx < -0.4)) p = Math.min(PAGES_N - 1, st.page + 1);
+      else if (st.pageX > W / 3 || (st.pageX > 16 && ptr.vx > 0.4)) p = Math.max(0, st.page - 1);
+      settlePage(p, now);
+      return;
+    }
     if (st.mode !== 'app' || !st.app) return;
     const app = st.app, s = appState(app);
     if (ptr.mode === 'drag') { if (app.fixed) app.up?.(x, y, s, os); else app.dragEnd?.(s, os); return; }
@@ -707,8 +767,9 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
   }
 
   return {
-    canvas, width: W, height: H, draw, settings, photos,
+    canvas, width: W, height: H, draw, settings,
     get mode() { return st.mode; },
+    get page() { return st.page; },
     get app() { return st.app?.id ?? null; },
     get scroll() { return st.app ? appState(st.app).scroll : 0; },
     // the live web page Safari is on, if any: { url, rect } in screen coordinates
@@ -755,6 +816,7 @@ export function createPhoneOS({ carrier = 'Ricky', logo = 'R', scale = 2 } = {})
     pressHome(now = performance.now()) {
       if (st.mode === 'off') return setMode('waking', now);
       if (st.mode === 'app' || st.mode === 'opening') { ptr.active = false; return setMode('closing', now); }
+      if (st.mode === 'home' && st.page !== 0) settlePage(0, now); // the home button also goes to the first page
     },
     pressSleep(now = performance.now()) {
       if (st.mode === 'off') setMode('waking', now);
