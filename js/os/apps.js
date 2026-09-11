@@ -27,12 +27,12 @@ const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); retur
 // opens the real site.
 const ABOUT = [
   ['header', 'Ricky', 'Work · About'],
-  ['intro', "Hi, I'm Ricky.", "I've been working with websites for over twenty years. This one is just me enjoying the world of AI."],
+  ['intro', "Hi, I'm Ricky.", "I've been building websites for fun for the past twenty years, and now I'm just enjoying this new era of AI."],
   ['label', 'Work'],
   ['project', 'autismwaitlist.com', 'Advocacy for better care for children with autism in Ontario. The site generates letters and sends them to MPPs, then follows up automatically with provincial leaders, showing what constituents are asking for.', 'Visit the site'],
   ['project', 'This phone', 'A first-generation iPhone in a den, built with AI from three.js primitives and canvas-drawn software. You are holding it.'],
   ['label', 'About'],
-  ['p', 'Over twenty years of building websites, and lately a lot of time enjoying what AI can build alongside me.'],
+  ['p', "Websites have never been my trade, just something I've enjoyed making for twenty years. This one is what that looks like in the age of AI."],
   ['footer', '© Ricky'],
 ];
 

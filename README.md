@@ -62,9 +62,9 @@ The phone runs software drawn in the manner of the first iPhone OS:
   the home button returns to the first page;
 - every app does something. Safari is a real browser for the pages listed in
   its code and nothing else (the address field takes no typing): a plain
-  portfolio page (a name, twenty-odd years of websites and a site made for the
-  fun of AI, the work, a footer) whose autismwaitlist.com entry opens the
-  actual site, shown in a frame laid over the screen while the phone is in
+  portfolio page (a name, twenty years of building websites for fun and now
+  the new era of AI, the work, a footer) whose autismwaitlist.com entry opens
+  the actual site, shown in a frame laid over the screen while the phone is in
   hand; the page is laid out at a desktop's width and scaled down to fit, so
   it looks like a small copy of the site, the way the first iPhone shrank
   pages to the screen, and the magnifier in the toolbar steps it through
