@@ -32,10 +32,12 @@ const ABOUT = [
 // Safari's pages. The first is drawn here. Every other one is a real web
 // page, shown in a frame laid over the screen while the phone is in hand.
 // Only pages listed here can be reached: the address field takes no typing.
-// A live page is laid out at one of these widths and scaled to fit the
-// screen, the way the first iPhone showed a page at a wider virtual width and
-// shrank it to fit. The toolbar's right-hand button steps through them.
-const LAYOUTS = [[430, 'phone'], [768, 'tablet'], [1024, 'desktop']];
+// A live page is laid out at a desktop's width and scaled down to fit the
+// screen, so it looks like a small copy of the site rather than a page
+// squeezed narrow, the way the first iPhone showed a page at a wider
+// virtual width and shrank it. The toolbar's right-hand button steps
+// through the widths.
+const LAYOUTS = [[1280, 'desktop'], [820, 'tablet'], [430, 'phone']];
 const PAGES = [
   { title: "I'm Ricky", url: 'ricky.example', live: false },
   { title: 'Autism Waitlist', url: 'https://autismwaitlist.com', live: true, layout: 0 },
